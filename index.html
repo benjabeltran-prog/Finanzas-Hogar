@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Finanzas del Hogar</title>
+<link rel="stylesheet" href="css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<!-- ============ PANTALLA DE LOGIN ============ -->
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-card">
+    <h1>💰 Finanzas del Hogar</h1>
+    <p class="muted">Administra los ingresos y gastos de tu hogar mes a mes.</p>
+
+    <div class="tabs-inline">
+      <button class="tab-btn active" data-authtab="login">Iniciar sesión</button>
+      <button class="tab-btn" data-authtab="signup">Crear cuenta</button>
+    </div>
+
+    <form id="login-form" class="auth-form">
+      <input type="email" id="login-email" placeholder="Correo" required />
+      <input type="password" id="login-password" placeholder="Contraseña" required />
+      <button type="submit" class="btn-primary">Entrar</button>
+    </form>
+
+    <form id="signup-form" class="auth-form" style="display:none">
+      <input type="email" id="signup-email" placeholder="Correo" required />
+      <input type="password" id="signup-password" placeholder="Contraseña (mín. 6 caracteres)" required minlength="6" />
+      <button type="submit" class="btn-primary">Crear cuenta</button>
+    </form>
+
+    <p id="auth-message" class="auth-message"></p>
+  </div>
+</div>
+
+<!-- ============ APP PRINCIPAL ============ -->
+<div id="app-screen" class="app-screen" style="display:none">
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">💰 Finanzas del Hogar</span>
+      <select id="household-select"></select>
+      <button id="btn-household-manage" class="btn-ghost" title="Gestionar hogares">⚙️ Hogares</button>
+    </div>
+    <div class="topbar-right">
+      <select id="month-select"></select>
+      <button id="btn-new-month" class="btn-ghost">+ Nuevo mes</button>
+      <span id="user-email" class="muted"></span>
+      <button id="btn-logout" class="btn-ghost">Salir</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+    <button class="tab-btn" data-tab="ingresos">💵 Ingresos</button>
+    <button class="tab-btn" data-tab="fijos">📌 Gastos Fijos</button>
+    <button class="tab-btn" data-tab="extra">🧾 Gastos Extra</button>
+    <button class="tab-btn" data-tab="tarjeta">💳 Tarjeta de Crédito</button>
+    <button class="tab-btn" data-tab="historial">📈 Historial / Reportes</button>
+  </nav>
+
+  <main class="content">
+
+    <!-- DASHBOARD -->
+    <section id="tab-dashboard" class="tab-panel active">
+      <div class="cards-grid" id="dashboard-cards"></div>
+      <div class="chart-box">
+        <h3>Ahorro mensual (histórico)</h3>
+        <canvas id="chart-savings"></canvas>
+      </div>
+    </section>
+
+    <!-- INGRESOS -->
+    <section id="tab-ingresos" class="tab-panel">
+      <h2>Ingresos del mes</h2>
+      <form id="form-income" class="inline-form">
+        <input type="text" id="income-person" placeholder="Nombre (ej: Benja, Pareja)" required />
+        <input type="text" id="income-desc" placeholder="Descripción (ej: Sueldo)" />
+        <input type="number" id="income-amount" placeholder="Monto" step="1" required />
+        <button type="submit" class="btn-primary">Agregar</button>
+      </form>
+      <table class="data-table" id="table-incomes">
+        <thead><tr><th>Persona</th><th>Descripción</th><th>Monto</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="total-row">Total ingresos: <strong id="total-incomes">$0</strong></p>
+    </section>
+
+    <!-- GASTOS FIJOS -->
+    <section id="tab-fijos" class="tab-panel">
+      <h2>Gastos fijos (servicios, colegio, actividades)</h2>
+      <form id="form-fixed" class="inline-form">
+        <select id="fixed-category">
+          <option value="servicios">Servicios</option>
+          <option value="colegio">Colegio</option>
+          <option value="actividades">Actividades</option>
+          <option value="otro">Otro</option>
+        </select>
+        <input type="text" id="fixed-name" placeholder="Nombre (ej: Luz, Colegio Juan)" required />
+        <input type="number" id="fixed-amount" placeholder="Monto" step="1" required />
+        <button type="submit" class="btn-primary">Agregar</button>
+      </form>
+      <table class="data-table" id="table-fixed">
+        <thead><tr><th>Categoría</th><th>Nombre</th><th>Monto</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="total-row">Total gastos fijos: <strong id="total-fixed">$0</strong></p>
+    </section>
+
+    <!-- GASTOS EXTRA -->
+    <section id="tab-extra" class="tab-panel">
+      <h2>Gastos extra</h2>
+      <form id="form-extra" class="inline-form">
+        <input type="text" id="extra-name" placeholder="Descripción" required />
+        <input type="date" id="extra-date" />
+        <input type="number" id="extra-amount" placeholder="Monto" step="1" required />
+        <button type="submit" class="btn-primary">Agregar</button>
+      </form>
+      <table class="data-table" id="table-extra">
+        <thead><tr><th>Descripción</th><th>Fecha</th><th>Monto</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="total-row">Total gastos extra: <strong id="total-extra">$0</strong></p>
+    </section>
+
+    <!-- TARJETA DE CRÉDITO -->
+    <section id="tab-tarjeta" class="tab-panel">
+      <h2>Tarjeta de crédito — cartola del mes</h2>
+      <div class="card-box">
+        <label class="upload-label">
+          📄 Subir PDF de la cartola (Santander)
+          <input type="file" id="pdf-input" accept="application/pdf" style="display:none" />
+        </label>
+        <p class="muted" id="pdf-status"></p>
+      </div>
+
+      <div id="pdf-preview" style="display:none">
+        <h3>Revisa y ajusta antes de guardar</h3>
+        <p class="muted">El desglose es automático y puede tener errores — edita los montos/descripciones si es necesario antes de confirmar.</p>
+        <table class="data-table" id="table-pdf-preview">
+          <thead><tr><th>Fecha</th><th>Descripción</th><th>Cuotas</th><th>Monto</th><th>Categoría</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="inline-form">
+          <label>Total facturado: <input type="number" id="pdf-total" step="1" /></label>
+          <button id="btn-confirm-pdf" class="btn-primary">Confirmar e importar</button>
+        </div>
+      </div>
+
+      <h3>Movimientos guardados de este mes</h3>
+      <table class="data-table" id="table-cc-transactions">
+        <thead><tr><th>Fecha</th><th>Descripción</th><th>Cuotas</th><th>Monto</th><th>Categoría</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="total-row">Total tarjeta (facturado): <strong id="total-cc">$0</strong></p>
+    </section>
+
+    <!-- HISTORIAL / REPORTES -->
+    <section id="tab-historial" class="tab-panel">
+      <h2>Historial de meses</h2>
+      <table class="data-table" id="table-history">
+        <thead><tr><th>Mes</th><th>Ingresos</th><th>Gastos Fijos</th><th>Gastos Extra</th><th>Tarjeta</th><th>Ahorro</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============ MODAL GESTIÓN DE HOGARES ============ -->
+<div id="household-modal" class="modal" style="display:none">
+  <div class="modal-box">
+    <h3>Gestionar hogares</h3>
+    <div class="modal-section">
+      <h4>Crear nuevo hogar</h4>
+      <div class="inline-form">
+        <input type="text" id="new-household-name" placeholder="Nombre del hogar" />
+        <button id="btn-create-household" class="btn-primary">Crear</button>
+      </div>
+    </div>
+    <div class="modal-section">
+      <h4>Unirme a un hogar existente</h4>
+      <p class="muted">Pide el código de invitación al dueño del hogar.</p>
+      <div class="inline-form">
+        <input type="text" id="join-code" placeholder="Código de invitación" />
+        <button id="btn-join-household" class="btn-primary">Unirme</button>
+      </div>
+    </div>
+    <div class="modal-section">
+      <h4>Código de invitación de este hogar</h4>
+      <p id="current-join-code" class="join-code-display">—</p>
+      <p class="muted">Comparte este código con quien quieras que se una a este hogar.</p>
+    </div>
+    <button id="btn-close-household-modal" class="btn-ghost">Cerrar</button>
+  </div>
+</div>
+
+<script type="module" src="js/supabaseClient.js"></script>
+<script type="module" src="js/pdfParser.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
