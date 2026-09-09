@@ -113,6 +113,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .btn-ghost:hover { border-color: var(--accent); background: rgba(79,140,255,0.08); }
+.btn-ghost-danger:hover { border-color: var(--red); background: rgba(248,113,113,0.08); color: var(--red); }
 
 .btn-danger {
   background: transparent;

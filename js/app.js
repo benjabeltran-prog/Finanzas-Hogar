@@ -214,6 +214,21 @@ document.getElementById("btn-new-month").addEventListener("click", async () => {
   await createMonth(y, m);
 });
 
+document.getElementById("btn-delete-month").addEventListener("click", async () => {
+  if (!currentMonth) return;
+  const label = `${MONTH_NAMES[currentMonth.month - 1]} ${currentMonth.year}`;
+  const confirmed = confirm(
+    `¿Eliminar ${label}? Esto borra también todos sus ingresos, gastos fijos, gastos extra y la cartola de tarjeta asociada. Esta acción no se puede deshacer.`
+  );
+  if (!confirmed) return;
+
+  const { error } = await supabase.from("months").delete().eq("id", currentMonth.id);
+  if (error) { alert("Error eliminando el mes: " + error.message); return; }
+
+  currentMonth = null;
+  await loadMonths();
+});
+
 async function createMonth(year, month) {
   const { data, error } = await supabase
     .from("months")
