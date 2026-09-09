@@ -67,6 +67,7 @@
     <button class="tab-btn" data-tab="fijos">Gastos Fijos</button>
     <button class="tab-btn" data-tab="extra">Gastos Extra</button>
     <button class="tab-btn" data-tab="tarjeta">Tarjeta de Crédito</button>
+    <button class="tab-btn" data-tab="ahorros">Ahorros</button>
     <button class="tab-btn" data-tab="historial">Historial / Reportes</button>
   </nav>
 
@@ -177,6 +178,39 @@
         <tbody></tbody>
       </table>
       <p class="total-row">Total tarjeta (facturado): <strong id="total-cc">$0</strong></p>
+    </section>
+
+    <!-- AHORROS / PATRIMONIO -->
+    <section id="tab-ahorros" class="tab-panel">
+      <h2>Ahorros y patrimonio</h2>
+      <p class="muted">Cuenta corriente, depósitos a plazo, cuentas digitales con interés (MercadoPago, MACH, etc.) — registra el saldo real de cada una mes a mes.</p>
+
+      <h3 class="section-title">Tus cuentas</h3>
+      <form id="form-account" class="inline-form">
+        <input type="text" id="account-name" placeholder="Nombre (ej: Cuenta Corriente, MACH)" required />
+        <select id="account-type">
+          <option value="cuenta_corriente">Cuenta corriente</option>
+          <option value="cuenta_digital">Cuenta digital (MercadoPago, MACH...)</option>
+          <option value="deposito_plazo">Depósito a plazo</option>
+          <option value="otro">Otro</option>
+        </select>
+        <input type="number" id="account-rate" placeholder="Tasa anual % (opcional)" step="0.01" style="width:170px" />
+        <button type="submit" class="btn-primary">Agregar cuenta</button>
+      </form>
+
+      <h3 class="section-title">Saldos de este mes</h3>
+      <table class="data-table" id="table-accounts">
+        <thead><tr><th>Cuenta</th><th>Tipo</th><th>Tasa</th><th>Saldo este mes</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="total-row">Patrimonio total este mes: <strong id="total-patrimonio">$0</strong></p>
+
+      <div class="chart-box">
+        <h3>Evolución del patrimonio</h3>
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-patrimonio"></canvas>
+        </div>
+      </div>
     </section>
 
     <!-- HISTORIAL / REPORTES -->

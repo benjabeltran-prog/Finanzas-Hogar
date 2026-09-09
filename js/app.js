@@ -297,7 +297,7 @@ async function fetchMonthById(id) {
 async function refreshAll() {
   if (!currentMonth) return;
   await Promise.all([
-    loadIncomes(), loadFixedExpenses(), loadExtraExpenses(), loadCreditCardTransactions(),
+    loadIncomes(), loadFixedExpenses(), loadExtraExpenses(), loadCreditCardTransactions(), loadAccounts(),
   ]);
   await loadDashboard();
   await loadHistory();
@@ -682,6 +682,149 @@ async function loadHistory() {
       <td>${fmt(s.total_tarjeta)}</td>
       <td style="color:${s.ahorro >= 0 ? 'var(--green)' : 'var(--red)'}">${fmt(s.ahorro)}</td>
     </tr>`).join("");
+}
+
+// ============================================================
+// AHORROS / PATRIMONIO (cuentas y saldos mes a mes)
+// ============================================================
+let savingsAccounts = [];
+let patrimonioChart = null;
+
+const ACCOUNT_TYPE_LABELS = {
+  cuenta_corriente: "Cuenta corriente",
+  cuenta_digital: "Cuenta digital",
+  deposito_plazo: "Depósito a plazo",
+  otro: "Otro",
+};
+
+document.getElementById("form-account").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("account-name").value.trim();
+  const account_type = document.getElementById("account-type").value;
+  const rateRaw = document.getElementById("account-rate").value;
+  const interest_rate = rateRaw ? parseFloat(rateRaw) : null;
+  if (!name) return;
+
+  const { error } = await supabase.from("savings_accounts").insert({
+    household_id: currentHousehold.id, name, account_type, interest_rate,
+  });
+  if (error) { alert("Error agregando cuenta: " + error.message); return; }
+  e.target.reset();
+  await loadAccounts();
+  await loadPatrimonioChart();
+});
+
+async function loadAccounts() {
+  const { data: accounts } = await supabase
+    .from("savings_accounts").select("*").eq("household_id", currentHousehold.id).order("created_at");
+  savingsAccounts = accounts || [];
+
+  const { data: balances } = await supabase
+    .from("account_balances").select("*").eq("month_id", currentMonth.id);
+  const balanceByAccount = {};
+  (balances || []).forEach((b) => { balanceByAccount[b.account_id] = b; });
+
+  const tbody = document.querySelector("#table-accounts tbody");
+  tbody.innerHTML = savingsAccounts.map((a) => {
+    const existing = balanceByAccount[a.id];
+    const rate = a.interest_rate != null ? `${a.interest_rate}%` : "-";
+    return `
+      <tr>
+        <td>${a.name}</td>
+        <td>${ACCOUNT_TYPE_LABELS[a.account_type] || a.account_type}</td>
+        <td>${rate}</td>
+        <td>
+          <input type="number" step="1" style="width:140px" data-account-id="${a.id}"
+                 class="balance-input" value="${existing ? existing.balance : ""}" placeholder="Saldo" />
+          <button class="btn-ghost" data-save-balance="${a.id}" style="padding:4px 10px;font-size:0.85em">Guardar</button>
+        </td>
+        <td><button class="btn-danger" data-del-account="${a.id}">✕</button></td>
+      </tr>`;
+  }).join("");
+
+  tbody.querySelectorAll("[data-save-balance]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const accountId = btn.dataset.saveBalance;
+      const input = tbody.querySelector(`.balance-input[data-account-id="${accountId}"]`);
+      const balance = parseFloat(input.value);
+      if (isNaN(balance)) { alert("Ingresa un saldo válido."); return; }
+      const { error } = await supabase.from("account_balances").upsert(
+        { household_id: currentHousehold.id, account_id: accountId, month_id: currentMonth.id, balance, updated_at: new Date().toISOString() },
+        { onConflict: "account_id,month_id" }
+      );
+      if (error) { alert("Error guardando saldo: " + error.message); return; }
+      await loadAccounts();
+      await loadPatrimonioChart();
+    });
+  });
+
+  tbody.querySelectorAll("[data-del-account]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("¿Eliminar esta cuenta y todo su historial de saldos?")) return;
+      await supabase.from("savings_accounts").delete().eq("id", btn.dataset.delAccount);
+      await loadAccounts();
+      await loadPatrimonioChart();
+    });
+  });
+
+  const total = (balances || []).reduce((s, b) => s + Number(b.balance), 0);
+  document.getElementById("total-patrimonio").textContent = fmt(total);
+
+  await loadPatrimonioChart();
+}
+
+async function loadPatrimonioChart() {
+  const { data: allPatrimonio } = await supabase
+    .from("v_month_patrimonio").select("*").eq("household_id", currentHousehold.id)
+    .order("year").order("month");
+
+  const labels = (allPatrimonio || []).map((s) => `${MONTH_NAMES[s.month - 1].slice(0, 3)} ${s.year}`);
+  const values = (allPatrimonio || []).map((s) => Number(s.total_patrimonio));
+
+  const canvas = document.getElementById("chart-patrimonio");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const gradFill = ctx.createLinearGradient(0, 0, 0, canvas.parentElement.clientHeight || 300);
+  gradFill.addColorStop(0, "rgba(124, 92, 255, 0.35)");
+  gradFill.addColorStop(1, "rgba(124, 92, 255, 0)");
+
+  if (patrimonioChart) patrimonioChart.destroy();
+  patrimonioChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Patrimonio total",
+        data: values,
+        borderColor: "#7c5cff",
+        backgroundColor: gradFill,
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2.5,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        pointBackgroundColor: "#7c5cff",
+        pointBorderColor: "#0d1117",
+        pointBorderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#1c2333", titleColor: "#eef1f7", bodyColor: "#eef1f7",
+          borderColor: "#262e40", borderWidth: 1, padding: 10, cornerRadius: 8,
+          callbacks: { label: (item) => `Patrimonio: ${fmt(item.parsed.y)}` },
+        },
+      },
+      scales: {
+        y: { grid: { color: "rgba(255,255,255,0.06)" }, border: { display: false }, ticks: { color: "#8792a8", callback: (v) => fmt(v) } },
+        x: { grid: { display: false }, border: { display: false }, ticks: { color: "#8792a8" } },
+      },
+    },
+  });
 }
 
 // ---------------- INIT ----------------
