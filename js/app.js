@@ -556,7 +556,23 @@ async function loadDashboard() {
   let running = 0;
   const cumulativeValues = summaries.map((s) => { running += Number(s.ahorro); return running; });
 
-  const ctx = document.getElementById("chart-savings").getContext("2d");
+  const canvas = document.getElementById("chart-savings");
+  const ctx = canvas.getContext("2d");
+  const chartHeight = canvas.parentElement.clientHeight || 300;
+
+  // Gradientes suaves para las barras (verde/rojo) y el área bajo la línea (azul)
+  const gradGreen = ctx.createLinearGradient(0, 0, 0, chartHeight);
+  gradGreen.addColorStop(0, "rgba(52, 211, 153, 0.95)");
+  gradGreen.addColorStop(1, "rgba(52, 211, 153, 0.35)");
+
+  const gradRed = ctx.createLinearGradient(0, 0, 0, chartHeight);
+  gradRed.addColorStop(0, "rgba(248, 113, 113, 0.95)");
+  gradRed.addColorStop(1, "rgba(248, 113, 113, 0.35)");
+
+  const gradLineFill = ctx.createLinearGradient(0, 0, 0, chartHeight);
+  gradLineFill.addColorStop(0, "rgba(79, 140, 255, 0.35)");
+  gradLineFill.addColorStop(1, "rgba(79, 140, 255, 0)");
+
   if (savingsChart) savingsChart.destroy();
   savingsChart = new Chart(ctx, {
     type: "bar",
@@ -567,7 +583,10 @@ async function loadDashboard() {
           type: "bar",
           label: "Ahorro del mes",
           data: monthlyValues,
-          backgroundColor: monthlyValues.map((v) => (v >= 0 ? "#34d399" : "#f87171")),
+          backgroundColor: monthlyValues.map((v) => (v >= 0 ? gradGreen : gradRed)),
+          borderRadius: 8,
+          borderSkipped: false,
+          maxBarThickness: 42,
           order: 2,
         },
         {
@@ -575,18 +594,54 @@ async function loadDashboard() {
           label: "Ahorro acumulado",
           data: cumulativeValues,
           borderColor: "#4f8cff",
-          backgroundColor: "#4f8cff",
-          tension: 0.3,
+          backgroundColor: gradLineFill,
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          pointBackgroundColor: "#4f8cff",
+          pointBorderColor: "#0f1420",
+          pointBorderWidth: 2,
           order: 1,
         },
       ],
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: true, labels: { color: "#e8ecf5" } } },
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      animation: { duration: 700, easing: "easeOutQuart" },
+      plugins: {
+        legend: {
+          display: true,
+          position: "top",
+          align: "end",
+          labels: { color: "#8792a8", usePointStyle: true, pointStyle: "circle", boxWidth: 8, font: { size: 12 } },
+        },
+        tooltip: {
+          backgroundColor: "#1e2536",
+          titleColor: "#e8ecf5",
+          bodyColor: "#e8ecf5",
+          borderColor: "#262e40",
+          borderWidth: 1,
+          padding: 10,
+          cornerRadius: 8,
+          displayColors: true,
+          callbacks: { label: (item) => `${item.dataset.label}: ${fmt(item.parsed.y)}` },
+        },
+      },
       scales: {
-        y: { ticks: { color: "#8792a8" } },
-        x: { ticks: { color: "#8792a8" } },
+        y: {
+          grid: { color: "rgba(255,255,255,0.06)", drawTicks: false },
+          border: { display: false },
+          ticks: { color: "#8792a8", padding: 8, callback: (v) => fmt(v) },
+        },
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { color: "#8792a8" },
+        },
       },
     },
   });

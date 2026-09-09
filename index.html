@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Finanzas del Hogar</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="css/style.css" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
@@ -14,7 +18,8 @@
 <!-- ============ PANTALLA DE LOGIN ============ -->
 <div id="auth-screen" class="auth-screen">
   <div class="auth-card">
-    <h1>💰 Finanzas del Hogar</h1>
+    <img src="favicon.svg" class="brand-mark" alt="" />
+    <h1>Finanzas del Hogar</h1>
     <p class="muted">Administra los ingresos y gastos de tu hogar mes a mes.</p>
 
     <div class="tabs-inline">
@@ -43,9 +48,9 @@
 
   <header class="topbar">
     <div class="topbar-left">
-      <span class="logo">💰 Finanzas del Hogar</span>
+      <span class="logo"><img src="favicon.svg" class="brand-mark brand-mark-sm" alt="" />Finanzas del Hogar</span>
       <select id="household-select"></select>
-      <button id="btn-household-manage" class="btn-ghost" title="Gestionar hogares">⚙️ Hogares</button>
+      <button id="btn-household-manage" class="btn-ghost" title="Gestionar hogares">Hogares</button>
     </div>
     <div class="topbar-right">
       <select id="month-select"></select>
@@ -56,12 +61,12 @@
   </header>
 
   <nav class="tabs">
-    <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
-    <button class="tab-btn" data-tab="ingresos">💵 Ingresos</button>
-    <button class="tab-btn" data-tab="fijos">📌 Gastos Fijos</button>
-    <button class="tab-btn" data-tab="extra">🧾 Gastos Extra</button>
-    <button class="tab-btn" data-tab="tarjeta">💳 Tarjeta de Crédito</button>
-    <button class="tab-btn" data-tab="historial">📈 Historial / Reportes</button>
+    <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+    <button class="tab-btn" data-tab="ingresos">Ingresos</button>
+    <button class="tab-btn" data-tab="fijos">Gastos Fijos</button>
+    <button class="tab-btn" data-tab="extra">Gastos Extra</button>
+    <button class="tab-btn" data-tab="tarjeta">Tarjeta de Crédito</button>
+    <button class="tab-btn" data-tab="historial">Historial / Reportes</button>
   </nav>
 
   <main class="content">
@@ -82,7 +87,9 @@
 
       <div class="chart-box">
         <h3>Evolución del ahorro</h3>
-        <canvas id="chart-savings"></canvas>
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-savings"></canvas>
+        </div>
       </div>
     </section>
 
@@ -144,7 +151,7 @@
       <h2>Tarjeta de crédito — cartola del mes</h2>
       <div class="card-box">
         <label class="upload-label">
-          📄 Subir PDF de la cartola (Santander)
+          Subir PDF de la cartola (Santander)
           <input type="file" id="pdf-input" accept="application/pdf" style="display:none" />
         </label>
         <p class="muted" id="pdf-status"></p>
