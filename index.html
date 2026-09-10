@@ -228,7 +228,19 @@
         </select>
         <input type="number" id="account-rate" placeholder="Tasa anual % (opcional)" step="0.01" style="width:170px" />
         <button type="submit" class="btn-primary">Agregar cuenta</button>
+
+        <label class="checkbox-label">
+          <input type="checkbox" id="account-auto-track" />
+          Vincular a mis ingresos/gastos (se calcula sola)
+        </label>
+        <span id="auto-track-fields" style="display:none">
+          <input type="number" id="account-initial-balance" placeholder="Saldo inicial" step="1" style="width:150px" />
+          <select id="account-initial-month"></select>
+        </span>
       </form>
+      <p class="muted" id="auto-track-hint" style="display:none">
+        Dale el saldo que tenía esa cuenta AL EMPEZAR el mes que elijas — desde ahí la app le va sumando/restando el ahorro (ingresos − gastos) de cada mes automáticamente.
+      </p>
 
       <h3 class="section-title">Saldos de este mes</h3>
       <table class="data-table" id="table-accounts">

@@ -325,6 +325,16 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .filter-chip.active::before { opacity: 1; }
 .filter-chip:hover { color: var(--text); }
 
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+  color: var(--muted);
+  cursor: pointer;
+}
+.checkbox-label input[type="checkbox"] { cursor: pointer; }
+
 /* ---------- TIMELINE ---------- */
 .timeline-nav {
   display: flex;

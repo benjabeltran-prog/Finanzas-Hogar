@@ -807,19 +807,39 @@ const ACCOUNT_TYPE_LABELS = {
   otro: "Otro",
 };
 
+document.getElementById("account-auto-track").addEventListener("change", (e) => {
+  document.getElementById("auto-track-fields").style.display = e.target.checked ? "inline-flex" : "none";
+  document.getElementById("auto-track-hint").style.display = e.target.checked ? "block" : "none";
+});
+
 document.getElementById("form-account").addEventListener("submit", async (e) => {
   e.preventDefault();
   const name = document.getElementById("account-name").value.trim();
   const account_type = document.getElementById("account-type").value;
   const rateRaw = document.getElementById("account-rate").value;
   const interest_rate = rateRaw ? parseFloat(rateRaw) : null;
+  const autoTrack = document.getElementById("account-auto-track").checked;
   if (!name) return;
+
+  let initial_balance = null;
+  let initial_month_id = null;
+  if (autoTrack) {
+    initial_balance = parseFloat(document.getElementById("account-initial-balance").value);
+    initial_month_id = document.getElementById("account-initial-month").value;
+    if (isNaN(initial_balance) || !initial_month_id) {
+      alert("Completa el saldo inicial y el mes inicial para una cuenta vinculada.");
+      return;
+    }
+  }
 
   const { error } = await supabase.from("savings_accounts").insert({
     household_id: currentHousehold.id, name, account_type, interest_rate,
+    auto_track: autoTrack, initial_balance, initial_month_id,
   });
   if (error) { alert("Error agregando cuenta: " + error.message); return; }
   e.target.reset();
+  document.getElementById("auto-track-fields").style.display = "none";
+  document.getElementById("auto-track-hint").style.display = "none";
   await loadAccounts();
   await loadPatrimonioChart();
 });
@@ -829,15 +849,59 @@ async function loadAccounts() {
     .from("savings_accounts").select("*").eq("household_id", currentHousehold.id).order("created_at");
   savingsAccounts = accounts || [];
 
+  // Popular el selector de "mes inicial" del formulario de nueva cuenta
+  const initialMonthSelect = document.getElementById("account-initial-month");
+  if (initialMonthSelect) {
+    initialMonthSelect.innerHTML = ascendingMonths()
+      .map((m) => `<option value="${m.id}">${MONTH_NAMES[m.month - 1]} ${m.year}</option>`).join("");
+  }
+
   const { data: balances } = await supabase
     .from("account_balances").select("*").eq("month_id", currentMonth.id);
   const balanceByAccount = {};
   (balances || []).forEach((b) => { balanceByAccount[b.account_id] = b; });
 
+  // Cuentas vinculadas al flujo de caja: calcular su saldo de este mes y guardarlo
+  const autoAccounts = savingsAccounts.filter((a) => a.auto_track && a.initial_month_id);
+  if (autoAccounts.length) {
+    const { data: allSummaries } = await supabase
+      .from("v_month_summary").select("month_id, year, month, ahorro")
+      .eq("household_id", currentHousehold.id).order("year").order("month");
+
+    for (const acc of autoAccounts) {
+      const initIdx = (allSummaries || []).findIndex((s) => s.month_id === acc.initial_month_id);
+      const curIdx = (allSummaries || []).findIndex((s) => s.month_id === currentMonth.id);
+      if (initIdx === -1 || curIdx === -1 || curIdx < initIdx) continue; // este mes es anterior al mes inicial
+
+      let flowSum = 0;
+      for (let i = initIdx; i <= curIdx; i++) flowSum += Number(allSummaries[i].ahorro);
+      const computedBalance = Number(acc.initial_balance) + flowSum;
+
+      await supabase.from("account_balances").upsert(
+        { household_id: currentHousehold.id, account_id: acc.id, month_id: currentMonth.id, balance: computedBalance, updated_at: new Date().toISOString() },
+        { onConflict: "account_id,month_id" }
+      );
+      balanceByAccount[acc.id] = { balance: computedBalance };
+    }
+  }
+
   const tbody = document.querySelector("#table-accounts tbody");
   tbody.innerHTML = savingsAccounts.map((a) => {
     const existing = balanceByAccount[a.id];
     const rate = a.interest_rate != null ? `${a.interest_rate}%` : "-";
+
+    if (a.auto_track) {
+      const val = existing ? fmt(existing.balance) : "— (antes del mes inicial)";
+      return `
+        <tr>
+          <td>${a.name}</td>
+          <td>${ACCOUNT_TYPE_LABELS[a.account_type] || a.account_type}</td>
+          <td>${rate}</td>
+          <td><strong>${val}</strong> <span class="muted" style="font-size:0.75em">(automático)</span></td>
+          <td><button class="btn-danger" data-del-account="${a.id}">✕</button></td>
+        </tr>`;
+    }
+
     return `
       <tr>
         <td>${a.name}</td>
@@ -877,7 +941,10 @@ async function loadAccounts() {
     });
   });
 
-  const total = (balances || []).reduce((s, b) => s + Number(b.balance), 0);
+  const total = savingsAccounts.reduce((s, a) => {
+    const b = balanceByAccount[a.id];
+    return s + (b ? Number(b.balance) : 0);
+  }, 0);
   document.getElementById("total-patrimonio").textContent = fmt(total);
 
   await loadPatrimonioChart();
