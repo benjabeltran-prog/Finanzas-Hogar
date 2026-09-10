@@ -106,7 +106,14 @@
       <div class="category-rank" id="dashboard-categories"></div>
 
       <div class="chart-box">
-        <h3>Evolución del ahorro</h3>
+        <div class="chart-header">
+          <h3>Evolución del ahorro</h3>
+          <div class="chart-filters" id="savings-chart-filters">
+            <button class="filter-chip active" data-series="0" style="--chip-color:#34d399">Ahorro del mes</button>
+            <button class="filter-chip active" data-series="1" style="--chip-color:#4f8cff">Ahorro acumulado</button>
+            <button class="filter-chip active" data-series="2" style="--chip-color:#7c5cff">Patrimonio</button>
+          </div>
+        </div>
         <div class="chart-canvas-wrap">
           <canvas id="chart-savings"></canvas>
         </div>

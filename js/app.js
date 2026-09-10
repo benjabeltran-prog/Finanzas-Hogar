@@ -721,8 +721,26 @@ async function loadDashboard() {
     },
   });
 
+  syncSavingsChartFilters();
   renderTimeline(summariesByMonthId);
 }
+
+// ---------------- FILTROS DEL GRÁFICO DE AHORRO ----------------
+function syncSavingsChartFilters() {
+  if (!savingsChart) return;
+  document.querySelectorAll("#savings-chart-filters .filter-chip").forEach((chip) => {
+    const idx = Number(chip.dataset.series);
+    savingsChart.setDatasetVisibility(idx, chip.classList.contains("active"));
+  });
+  savingsChart.update();
+}
+
+document.querySelectorAll("#savings-chart-filters .filter-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    chip.classList.toggle("active");
+    syncSavingsChartFilters();
+  });
+});
 
 // ============================================================
 // HISTORIAL
