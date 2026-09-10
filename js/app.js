@@ -760,7 +760,38 @@ async function loadHistory() {
       <td>${fmt(s.total_tarjeta)}</td>
       <td style="color:${s.ahorro >= 0 ? 'var(--green)' : 'var(--red)'}">${fmt(s.ahorro)}</td>
     </tr>`).join("");
+
+  document.getElementById("report-cards").style.display = "none";
 }
+
+document.getElementById("btn-generate-report").addEventListener("click", async () => {
+  const { data: summaries } = await supabase
+    .from("v_month_summary").select("*").eq("household_id", currentHousehold.id);
+
+  if (!summaries || summaries.length === 0) {
+    alert("Todavía no hay meses con datos para calcular un promedio.");
+    return;
+  }
+
+  const n = summaries.length;
+  const avg = (key) => summaries.reduce((s, r) => s + Number(r[key]), 0) / n;
+  const avgIngresos = avg("total_ingresos");
+  const avgFijos = avg("total_gastos_fijos");
+  const avgExtra = avg("total_gastos_extra");
+  const avgTarjeta = avg("total_tarjeta");
+  const avgAhorro = avg("ahorro");
+
+  const el = document.getElementById("report-cards");
+  el.style.display = "grid";
+  el.innerHTML = `
+    <div class="card"><div class="label">Meses considerados</div><div class="value">${n}</div></div>
+    <div class="card"><div class="label">Ingreso promedio mensual</div><div class="value">${fmt(avgIngresos)}</div></div>
+    <div class="card"><div class="label">Gasto tarjeta promedio</div><div class="value">${fmt(avgTarjeta)}</div></div>
+    <div class="card"><div class="label">Gastos fijos promedio</div><div class="value">${fmt(avgFijos)}</div></div>
+    <div class="card"><div class="label">Gastos extra promedio</div><div class="value">${fmt(avgExtra)}</div></div>
+    <div class="card ${avgAhorro >= 0 ? "savings-positive" : "savings-negative"}"><div class="label">Ahorro promedio mensual</div><div class="value">${fmt(avgAhorro)}</div></div>
+  `;
+});
 
 // ============================================================
 // AHORROS / PATRIMONIO (cuentas y saldos mes a mes)
