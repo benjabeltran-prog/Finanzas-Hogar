@@ -566,6 +566,19 @@ async function loadDashboard() {
     <div class="card ${cumAhorro >= 0 ? "savings-positive" : "savings-negative"}"><div class="label">Ahorro acumulado</div><div class="value">${fmt(cumAhorro)}</div></div>
   `;
 
+  // --- Patrimonio consolidado: ahorro acumulado (flujo) + saldo actual en cuentas externas ---
+  const { data: patrimonioRow } = await supabase
+    .from("v_month_patrimonio").select("total_patrimonio").eq("month_id", currentMonth.id).single();
+  const externalSavings = patrimonioRow ? Number(patrimonioRow.total_patrimonio) : 0;
+  const consolidatedPatrimonio = cumAhorro + externalSavings;
+
+  document.getElementById("dashboard-consolidated-card").innerHTML = `
+    <div class="card ${consolidatedPatrimonio >= 0 ? "savings-positive" : "savings-negative"}">
+      <div class="label">Patrimonio consolidado (ahorro acumulado + cuentas externas)</div>
+      <div class="value">${fmt(consolidatedPatrimonio)}</div>
+    </div>
+  `;
+
   // --- Gráfico: barras = ahorro de cada mes, línea = ahorro acumulado en el tiempo ---
   const labels = summaries.map((s) => `${MONTH_NAMES[s.month - 1].slice(0, 3)} ${s.year}`);
   const monthlyValues = summaries.map((s) => Number(s.ahorro));
