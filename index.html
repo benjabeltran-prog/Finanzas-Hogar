@@ -87,6 +87,9 @@
       <h3 class="section-title">Acumulado histórico (todos los meses hasta este)</h3>
       <div class="cards-grid" id="dashboard-cumulative-cards"></div>
 
+      <h3 class="section-title">Tarjeta de crédito por categoría (este mes)</h3>
+      <div class="category-rank" id="dashboard-categories"></div>
+
       <div class="chart-box">
         <h3>Evolución del ahorro</h3>
         <div class="chart-canvas-wrap">
@@ -178,6 +181,13 @@
         <tbody></tbody>
       </table>
       <p class="total-row">Total tarjeta (facturado): <strong id="total-cc">$0</strong></p>
+
+      <h3 class="section-title">Gasto por categoría (este mes)</h3>
+      <div class="chart-box">
+        <div class="chart-canvas-wrap" style="height:280px">
+          <canvas id="chart-cc-categories"></canvas>
+        </div>
+      </div>
     </section>
 
     <!-- AHORROS / PATRIMONIO -->

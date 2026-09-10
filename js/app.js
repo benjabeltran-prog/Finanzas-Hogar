@@ -8,6 +8,7 @@ let currentHousehold = null;
 let months = [];           // [{id, year, month, status}]
 let currentMonth = null;
 let savingsChart = null;
+let ccCategoryChart = null;
 
 const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const fmt = (n) => "$" + Math.round(n || 0).toLocaleString("es-CL");
@@ -297,7 +298,7 @@ async function fetchMonthById(id) {
 async function refreshAll() {
   if (!currentMonth) return;
   await Promise.all([
-    loadIncomes(), loadFixedExpenses(), loadExtraExpenses(), loadCreditCardTransactions(), loadAccounts(),
+    loadIncomes(), loadFixedExpenses(), loadExtraExpenses(), loadCreditCardTransactions(), loadAccounts(), loadCategoryBreakdown(),
   ]);
   await loadDashboard();
   await loadHistory();
@@ -501,7 +502,7 @@ document.getElementById("btn-confirm-pdf").addEventListener("click", async () =>
   document.getElementById("pdf-preview").style.display = "none";
   document.getElementById("pdf-input").value = "";
   document.getElementById("pdf-status").textContent = "Cartola importada correctamente.";
-  await loadCreditCardTransactions(); await loadDashboard(); await loadHistory();
+  await loadCreditCardTransactions(); await loadDashboard(); await loadHistory(); await loadCategoryBreakdown();
 });
 
 async function loadCreditCardTransactions() {
@@ -825,6 +826,88 @@ async function loadPatrimonioChart() {
       },
     },
   });
+}
+
+// ============================================================
+// GASTO POR CATEGORÍA (tarjeta de crédito)
+// ============================================================
+const CATEGORY_COLORS = {
+  "Compras online": "#4f8cff",
+  "Supermercado": "#34d399",
+  "Combustible": "#fbbf24",
+  "Suscripciones": "#7c5cff",
+  "Restaurantes": "#f87171",
+  "Salud": "#22d3ee",
+  "Transporte": "#f472b6",
+  "Vestuario": "#a78bfa",
+  "Entretenimiento": "#fb923c",
+  "Servicios": "#94a3b8",
+  "Sin categoría": "#64748b",
+};
+
+async function loadCategoryBreakdown() {
+  const { data: statements } = await supabase
+    .from("credit_card_statements").select("id").eq("month_id", currentMonth.id);
+  const statementIds = (statements || []).map((s) => s.id);
+
+  let txs = [];
+  if (statementIds.length) {
+    const { data } = await supabase
+      .from("credit_card_transactions").select("category, amount").in("statement_id", statementIds);
+    txs = data || [];
+  }
+
+  const totals = {};
+  txs.forEach((t) => {
+    const cat = t.category || "Sin categoría";
+    totals[cat] = (totals[cat] || 0) + Number(t.amount);
+  });
+  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const maxVal = sorted.length ? sorted[0][1] : 0;
+
+  const rankEl = document.getElementById("dashboard-categories");
+  if (rankEl) {
+    rankEl.innerHTML = sorted.length
+      ? sorted.map(([cat, amt]) => `
+        <div class="category-row">
+          <div class="cat-name">${cat}</div>
+          <div class="bar-wrap"><div class="bar" style="width:${maxVal ? (amt / maxVal) * 100 : 0}%; background:${CATEGORY_COLORS[cat] || "#4f8cff"}"></div></div>
+          <div class="cat-amount">${fmt(amt)}</div>
+        </div>`).join("")
+      : `<p class="muted">Sin movimientos de tarjeta este mes.</p>`;
+  }
+
+  const canvas = document.getElementById("chart-cc-categories");
+  if (canvas) {
+    const ctx = canvas.getContext("2d");
+    if (ccCategoryChart) { ccCategoryChart.destroy(); ccCategoryChart = null; }
+    if (sorted.length) {
+      ccCategoryChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: sorted.map(([cat]) => cat),
+          datasets: [{
+            data: sorted.map(([, amt]) => amt),
+            backgroundColor: sorted.map(([cat]) => CATEGORY_COLORS[cat] || "#4f8cff"),
+            borderColor: "#151b26",
+            borderWidth: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "right", labels: { color: "#8792a8", usePointStyle: true, boxWidth: 8, font: { size: 11 } } },
+            tooltip: {
+              backgroundColor: "#1c2333", titleColor: "#eef1f7", bodyColor: "#eef1f7",
+              borderColor: "#262e40", borderWidth: 1, padding: 10, cornerRadius: 8,
+              callbacks: { label: (item) => `${item.label}: ${fmt(item.parsed)}` },
+            },
+          },
+        },
+      });
+    }
+  }
 }
 
 // ---------------- INIT ----------------
