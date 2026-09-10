@@ -598,17 +598,23 @@ async function loadDashboard() {
     </div>
   `;
 
-  // --- Gráfico: barras = ahorro de cada mes, línea = ahorro acumulado en el tiempo ---
+  // --- Gráfico: barras = ahorro de cada mes, línea = ahorro acumulado, línea = patrimonio ---
   const labels = summaries.map((s) => `${MONTH_NAMES[s.month - 1].slice(0, 3)} ${s.year}`);
   const monthlyValues = summaries.map((s) => Number(s.ahorro));
   let running = 0;
   const cumulativeValues = summaries.map((s) => { running += Number(s.ahorro); return running; });
 
+  const { data: allPatrimonio } = await supabase
+    .from("v_month_patrimonio").select("*").eq("household_id", currentHousehold.id);
+  const patrimonioByMonthId = {};
+  (allPatrimonio || []).forEach((p) => { patrimonioByMonthId[p.month_id] = Number(p.total_patrimonio); });
+  const patrimonioValues = summaries.map((s) => patrimonioByMonthId[s.month_id] || 0);
+
   const canvas = document.getElementById("chart-savings");
   const ctx = canvas.getContext("2d");
   const chartHeight = canvas.parentElement.clientHeight || 300;
 
-  // Gradientes suaves para las barras (verde/rojo) y el área bajo la línea (azul)
+  // Gradientes suaves para las barras (verde/rojo) y el área bajo las líneas (azul/violeta)
   const gradGreen = ctx.createLinearGradient(0, 0, 0, chartHeight);
   gradGreen.addColorStop(0, "rgba(52, 211, 153, 0.95)");
   gradGreen.addColorStop(1, "rgba(52, 211, 153, 0.35)");
@@ -620,6 +626,10 @@ async function loadDashboard() {
   const gradLineFill = ctx.createLinearGradient(0, 0, 0, chartHeight);
   gradLineFill.addColorStop(0, "rgba(79, 140, 255, 0.35)");
   gradLineFill.addColorStop(1, "rgba(79, 140, 255, 0)");
+
+  const gradPatrimonioFill = ctx.createLinearGradient(0, 0, 0, chartHeight);
+  gradPatrimonioFill.addColorStop(0, "rgba(124, 92, 255, 0.25)");
+  gradPatrimonioFill.addColorStop(1, "rgba(124, 92, 255, 0)");
 
   if (savingsChart) savingsChart.destroy();
   savingsChart = new Chart(ctx, {
@@ -635,7 +645,7 @@ async function loadDashboard() {
           borderRadius: 8,
           borderSkipped: false,
           maxBarThickness: 42,
-          order: 2,
+          order: 3,
         },
         {
           type: "line",
@@ -649,6 +659,23 @@ async function loadDashboard() {
           pointRadius: 3,
           pointHoverRadius: 6,
           pointBackgroundColor: "#4f8cff",
+          pointBorderColor: "#0f1420",
+          pointBorderWidth: 2,
+          order: 2,
+        },
+        {
+          type: "line",
+          label: "Patrimonio (cuentas externas)",
+          data: patrimonioValues,
+          borderColor: "#7c5cff",
+          backgroundColor: gradPatrimonioFill,
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2.5,
+          borderDash: [5, 3],
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          pointBackgroundColor: "#7c5cff",
           pointBorderColor: "#0f1420",
           pointBorderWidth: 2,
           order: 1,
