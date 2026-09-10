@@ -71,9 +71,9 @@ supabase.auth.onAuthStateChange((_event, session) => {
 // ============================================================
 // TABS DE NAVEGACIÓN
 // ============================================================
-document.querySelectorAll(".tabs .tab-btn").forEach((btn) => {
+document.querySelectorAll(".sidebar .side-tab").forEach((btn) => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".tabs .tab-btn").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".sidebar .side-tab").forEach((b) => b.classList.remove("active"));
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("tab-" + btn.dataset.tab).classList.add("active");

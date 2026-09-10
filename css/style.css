@@ -181,14 +181,6 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .dropdown-divider { height: 1px; background: var(--border); margin: 6px 4px; }
 .dropdown-user-email { padding: 6px 12px 2px; font-size: 0.78em; color: var(--muted); word-break: break-all; }
 
-.tabs {
-  display: flex;
-  gap: 2px;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-  background: var(--bg);
-}
 .tab-btn {
   background: transparent;
   border: none;
@@ -205,10 +197,75 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
 .tab-btn:hover { color: var(--text); }
 
-.content { padding: 28px 24px; max-width: 1100px; margin: 0 auto; }
+/* ---------- SIDEBAR (vertical nav) ---------- */
+.app-body { display: flex; align-items: flex-start; }
+.sidebar {
+  width: 220px;
+  flex: 0 0 auto;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 18px 10px;
+  min-height: calc(100vh - 65px);
+  position: sticky;
+  top: 65px;
+  align-self: flex-start;
+}
+.side-group-label {
+  margin: 20px 10px 6px;
+  font-size: 0.7em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+.side-group-label:first-of-type { margin-top: 4px; }
+.side-tab {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  color: var(--muted);
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  margin-bottom: 2px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.side-tab:hover { color: var(--text); background: var(--panel-2); }
+.side-tab.active {
+  color: var(--text);
+  background: rgba(79,140,255,0.12);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+.content { flex: 1 1 auto; padding: 28px 32px; max-width: 900px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; animation: fadein 0.25s ease; }
 @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 860px) {
+  .app-body { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    position: static;
+    min-height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+  }
+  .side-group-label { display: none; }
+  .side-tab { width: auto; border-left: none; border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; }
+  .side-tab.active { border-left: none; border-bottom-color: var(--accent); }
+  .content { max-width: 100%; padding: 22px 18px; }
+}
 
 /* ---------- CARDS ---------- */
 .cards-grid {
