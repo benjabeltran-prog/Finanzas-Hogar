@@ -585,16 +585,17 @@ async function loadDashboard() {
     <div class="card ${cumAhorro >= 0 ? "savings-positive" : "savings-negative"}"><div class="label">Ahorro acumulado</div><div class="value">${fmt(cumAhorro)}</div></div>
   `;
 
-  // --- Patrimonio consolidado: ahorro acumulado (flujo) + saldo actual en cuentas externas ---
+  // --- Patrimonio consolidado: saldo real de tus cuentas este mes ---
+  // (no se suma el ahorro acumulado por flujo: el saldo de las cuentas ya
+  // refleja el efecto de esos ingresos/gastos, sumarlo de nuevo lo duplicaría)
   const { data: patrimonioRow } = await supabase
     .from("v_month_patrimonio").select("total_patrimonio").eq("month_id", currentMonth.id).single();
   const externalSavings = patrimonioRow ? Number(patrimonioRow.total_patrimonio) : 0;
-  const consolidatedPatrimonio = cumAhorro + externalSavings;
 
   document.getElementById("dashboard-consolidated-card").innerHTML = `
-    <div class="card ${consolidatedPatrimonio >= 0 ? "savings-positive" : "savings-negative"}">
-      <div class="label">Patrimonio consolidado (ahorro acumulado + cuentas externas)</div>
-      <div class="value">${fmt(consolidatedPatrimonio)}</div>
+    <div class="card ${externalSavings >= 0 ? "savings-positive" : "savings-negative"}">
+      <div class="label">Patrimonio consolidado (saldo de tus cuentas este mes)</div>
+      <div class="value">${fmt(externalSavings)}</div>
     </div>
   `;
 
