@@ -81,6 +81,25 @@ document.querySelectorAll(".tabs .tab-btn").forEach((btn) => {
 });
 
 // ============================================================
+// MENÚ DESPLEGABLE DE ACCIONES
+// ============================================================
+const actionsMenuBtn = document.getElementById("btn-actions-menu");
+const actionsDropdown = document.getElementById("actions-dropdown");
+
+actionsMenuBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  actionsDropdown.classList.toggle("open");
+});
+document.addEventListener("click", (e) => {
+  if (!actionsDropdown.contains(e.target) && e.target !== actionsMenuBtn) {
+    actionsDropdown.classList.remove("open");
+  }
+});
+actionsDropdown.querySelectorAll(".dropdown-item").forEach((item) => {
+  item.addEventListener("click", () => actionsDropdown.classList.remove("open"));
+});
+
+// ============================================================
 // BOOTSTRAP: cargar hogares del usuario al iniciar sesión
 // ============================================================
 async function bootstrapApp() {
