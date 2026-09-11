@@ -178,7 +178,6 @@ async function selectHousehold(id) {
   currentHousehold = households.find((h) => h.id === id);
   if (!currentHousehold) return;
   document.getElementById("household-select").value = id;
-  document.getElementById("active-household-name").textContent = currentHousehold.name;
   document.getElementById("current-join-code").textContent = currentHousehold.join_code;
   await loadMonths();
 }
@@ -364,6 +363,60 @@ async function refreshAll() {
   await loadDashboard();
   await loadHistory();
   await loadMonthlySummaryNarrative();
+  await updateTickerMessages();
+}
+
+// ============================================================
+// TICKER DE LA BARRA SUPERIOR
+// ============================================================
+let tickerMessages = [];
+let tickerIndex = 0;
+let tickerInterval = null;
+
+function formatDateLong(d) {
+  const s = d.toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+async function updateTickerMessages() {
+  const messages = [];
+  if (currentHousehold) messages.push(`Este es el hogar ${currentHousehold.name}`);
+  if (currentMonth) messages.push(`El mes en curso es ${MONTH_NAMES[currentMonth.month - 1]} ${currentMonth.year}`);
+  messages.push(`Hoy es ${formatDateLong(new Date())}`);
+
+  if (currentMonth) {
+    const { data: summary } = await supabase
+      .from("v_month_summary").select("*").eq("month_id", currentMonth.id).single();
+    if (summary) {
+      messages.push(`Ingresos de este mes: ${fmt(summary.total_ingresos)}`);
+      messages.push(`Ahorro de este mes: ${fmt(summary.ahorro)}`);
+      messages.push(`Gasto en tarjeta este mes: ${fmt(summary.total_tarjeta)}`);
+    }
+  }
+
+  tickerMessages = messages;
+  tickerIndex = 0;
+  renderTickerMessage();
+  startTicker();
+}
+
+function renderTickerMessage() {
+  const el = document.getElementById("ticker-text");
+  if (!el || tickerMessages.length === 0) return;
+  el.classList.add("fade-out");
+  setTimeout(() => {
+    el.textContent = tickerMessages[tickerIndex];
+    el.classList.remove("fade-out");
+  }, 250);
+}
+
+function startTicker() {
+  if (tickerInterval) clearInterval(tickerInterval);
+  tickerInterval = setInterval(() => {
+    if (tickerMessages.length === 0) return;
+    tickerIndex = (tickerIndex + 1) % tickerMessages.length;
+    renderTickerMessage();
+  }, 4000);
 }
 
 // ============================================================

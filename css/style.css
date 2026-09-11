@@ -189,6 +189,26 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   max-width: 60vw;
 }
 
+.topbar-ticker {
+  max-width: 60vw;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+.ticker-text {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.88em;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.ticker-text.fade-out { opacity: 0; transform: translateY(4px); }
+
 .drawer-overlay {
   position: fixed;
   inset: 0;
