@@ -381,7 +381,7 @@ function formatDateLong(d) {
 async function updateTickerMessages() {
   const messages = [];
   if (currentHousehold) messages.push(`Este es el hogar ${currentHousehold.name}`);
-  if (currentMonth) messages.push(`El mes en curso es ${MONTH_NAMES[currentMonth.month - 1]} ${currentMonth.year}`);
+  if (currentMonth) messages.push(`El mes seleccionado es ${MONTH_NAMES[currentMonth.month - 1]} ${currentMonth.year}`);
   messages.push(`Hoy es ${formatDateLong(new Date())}`);
 
   if (currentMonth) {
