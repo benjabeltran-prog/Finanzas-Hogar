@@ -1272,6 +1272,21 @@ async function loadMonthlySummaryNarrative() {
 // ============================================================
 let chatMessages = [];
 
+document.getElementById("chat-bubble-toggle").innerHTML = icon("sparkles", 24);
+
+document.getElementById("chat-bubble-toggle").addEventListener("click", () => {
+  const popup = document.getElementById("chat-popup");
+  const isOpen = popup.style.display === "flex";
+  popup.style.display = isOpen ? "none" : "flex";
+  if (!isOpen && chatMessages.length === 0) {
+    chatMessages.push({ role: "assistant", text: "Hola, pregúntame sobre las finanzas de este hogar (ej: '¿cuánto gasté en restaurantes este mes?')." });
+    renderChat();
+  }
+});
+document.getElementById("chat-popup-close").addEventListener("click", () => {
+  document.getElementById("chat-popup").style.display = "none";
+});
+
 function renderChat() {
   const log = document.getElementById("chat-log");
   if (!log) return;
