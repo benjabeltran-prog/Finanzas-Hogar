@@ -117,22 +117,26 @@ document.querySelectorAll(".sidebar .side-tab").forEach((btn) => {
 });
 
 // ============================================================
-// MENÚ DESPLEGABLE DE ACCIONES
+// MENÚ HAMBURGUESA (drawer lateral)
 // ============================================================
-const actionsMenuBtn = document.getElementById("btn-actions-menu");
-const actionsDropdown = document.getElementById("actions-dropdown");
+const hamburgerBtn = document.getElementById("btn-hamburger");
+const drawer = document.getElementById("drawer");
+const drawerOverlay = document.getElementById("drawer-overlay");
 
-actionsMenuBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  actionsDropdown.classList.toggle("open");
-});
-document.addEventListener("click", (e) => {
-  if (!actionsDropdown.contains(e.target) && e.target !== actionsMenuBtn) {
-    actionsDropdown.classList.remove("open");
-  }
-});
-actionsDropdown.querySelectorAll(".dropdown-item").forEach((item) => {
-  item.addEventListener("click", () => actionsDropdown.classList.remove("open"));
+function openDrawer() {
+  drawer.classList.add("open");
+  drawerOverlay.style.display = "block";
+}
+function closeDrawer() {
+  drawer.classList.remove("open");
+  drawerOverlay.style.display = "none";
+}
+
+hamburgerBtn.addEventListener("click", openDrawer);
+drawerOverlay.addEventListener("click", closeDrawer);
+document.getElementById("drawer-close").addEventListener("click", closeDrawer);
+drawer.querySelectorAll(".dropdown-item").forEach((item) => {
+  item.addEventListener("click", closeDrawer);
 });
 
 // ============================================================
@@ -174,6 +178,7 @@ async function selectHousehold(id) {
   currentHousehold = households.find((h) => h.id === id);
   if (!currentHousehold) return;
   document.getElementById("household-select").value = id;
+  document.getElementById("active-household-name").textContent = currentHousehold.name;
   document.getElementById("current-join-code").textContent = currentHousehold.join_code;
   await loadMonths();
 }

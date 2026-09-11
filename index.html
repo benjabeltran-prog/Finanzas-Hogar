@@ -55,25 +55,52 @@
 
   <header class="topbar">
     <div class="topbar-left">
+      <button id="btn-hamburger" class="hamburger-btn" aria-label="Menú"></button>
+      <img src="favicon.svg" class="brand-mark brand-mark-sm" alt="" />
+    </div>
+    <div class="topbar-center">
+      <span id="active-household-name" class="household-label"></span>
+    </div>
+    <div class="topbar-right"></div>
+  </header>
+
+  <div class="drawer-overlay" id="drawer-overlay" style="display:none"></div>
+  <nav class="drawer" id="drawer">
+    <div class="drawer-header">
       <span class="logo"><img src="favicon.svg" class="brand-mark brand-mark-sm" alt="" />Finanzas del Hogar</span>
+      <button type="button" id="drawer-close" class="chat-popup-close">✕</button>
+    </div>
+
+    <div class="drawer-section">
+      <label class="drawer-label">Hogar</label>
       <select id="household-select"></select>
+    </div>
+
+    <div class="drawer-section">
+      <label class="drawer-label">Mes</label>
       <select id="month-select"></select>
     </div>
-    <div class="topbar-right">
-      <div class="menu-wrap">
-        <button id="btn-actions-menu" class="btn-ghost menu-trigger">Acciones <span class="menu-caret">▾</span></button>
-        <div class="dropdown-menu" id="actions-dropdown">
-          <button id="btn-new-month" class="dropdown-item">+ Nuevo mes</button>
-          <button id="btn-delete-month" class="dropdown-item dropdown-item-danger" title="Eliminar el mes seleccionado">Eliminar mes actual</button>
-          <div class="dropdown-divider"></div>
-          <button id="btn-household-manage" class="dropdown-item">Gestionar hogares</button>
-          <div class="dropdown-divider"></div>
-          <div class="dropdown-user-email" id="user-email"></div>
-          <button id="btn-logout" class="dropdown-item">Cerrar sesión</button>
-        </div>
-      </div>
+
+    <div class="dropdown-divider"></div>
+
+    <div class="drawer-section">
+      <button id="btn-new-month" class="dropdown-item">+ Nuevo mes</button>
+      <button id="btn-delete-month" class="dropdown-item dropdown-item-danger" title="Eliminar el mes seleccionado">Eliminar mes actual</button>
     </div>
-  </header>
+
+    <div class="dropdown-divider"></div>
+
+    <div class="drawer-section">
+      <button id="btn-household-manage" class="dropdown-item">Gestionar hogares</button>
+    </div>
+
+    <div class="dropdown-divider"></div>
+
+    <div class="drawer-section">
+      <div class="dropdown-user-email" id="user-email"></div>
+      <button id="btn-logout" class="dropdown-item">Cerrar sesión</button>
+    </div>
+  </nav>
 
   <div class="app-body">
     <nav class="sidebar">
