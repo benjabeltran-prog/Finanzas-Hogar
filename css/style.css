@@ -23,7 +23,12 @@ body {
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   letter-spacing: 0.1px;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
 }
+
+button, .side-tab, a { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+button:active, .side-tab:active, .filter-chip:active, .chat-bubble:active { transform: scale(0.96); }
 
 h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.01em; }
 
@@ -133,6 +138,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   justify-content: space-between;
   align-items: center;
   padding: 14px 24px;
+  padding-top: max(14px, env(safe-area-inset-top));
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
@@ -265,22 +271,62 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 
 @media (max-width: 860px) {
   .app-body { flex-direction: column; }
+
+  /* El sidebar se convierte en una barra de navegación inferior fija,
+     como en una app nativa (iOS/Android tab bar) */
   .sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     width: 100%;
     display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    position: static;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: stretch;
+    gap: 2px;
     min-height: auto;
+    background: var(--panel);
     border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    overflow-x: auto;
+    z-index: 150;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
   }
   .side-group-label { display: none; }
-  .side-tab { width: auto; border-left: none; border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; }
-  .side-tab.active { border-left: none; border-bottom-color: var(--accent); }
-  .content { max-width: 100%; padding: 22px 18px; }
+  .side-tab {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: auto;
+    flex: 1 0 auto;
+    min-width: 62px;
+    border-left: none;
+    border-radius: 10px;
+    padding: 7px 4px;
+    font-size: 0.65em;
+    text-align: center;
+    margin-bottom: 0;
+  }
+  .side-tab span { white-space: nowrap; }
+  .side-tab.active { border-left: none; background: rgba(79,140,255,0.16); }
+
+  .content { max-width: 100%; padding: 18px 16px calc(88px + env(safe-area-inset-bottom)); }
+
+  .topbar { padding: 10px 14px; gap: 8px; }
+  .topbar .logo span:not(.icon-inline) { display: none; }
+  .topbar-left, .topbar-right { gap: 8px; }
+  #household-select, #month-select { max-width: 40vw; font-size: 0.85em; }
+
+  .chat-widget { bottom: calc(78px + env(safe-area-inset-bottom)); right: 16px; }
+  .chat-popup { width: calc(100vw - 32px); }
+
+  /* Evita que iOS haga zoom automático al enfocar campos (necesita >=16px) */
+  input, select, textarea { font-size: 16px !important; }
 }
+
 
 /* ---------- CARDS ---------- */
 .cards-grid {
@@ -572,8 +618,10 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 26px;
-  width: 100%;
+  width: calc(100% - 32px);
   max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
   box-shadow: var(--shadow);
 }
 .modal-section { margin-bottom: 22px; }
