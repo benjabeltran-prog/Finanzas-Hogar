@@ -1267,5 +1267,88 @@ async function loadMonthlySummaryNarrative() {
   el.innerHTML = `<p>${icon("sparkles", 16)} ${parts.join(" ")}</p>`;
 }
 
+// ============================================================
+// CHAT CON IA
+// ============================================================
+let chatMessages = [];
+
+function renderChat() {
+  const log = document.getElementById("chat-log");
+  if (!log) return;
+  log.innerHTML = chatMessages.map((m) => `
+    <div class="chat-msg chat-msg-${m.role} ${m.pending ? "pending" : ""}">${escapeHtml(m.text)}</div>
+  `).join("");
+  log.scrollTop = log.scrollHeight;
+}
+
+async function buildChatContext() {
+  const { data: summaries } = await supabase
+    .from("v_month_summary").select("*").eq("household_id", currentHousehold.id)
+    .order("year").order("month");
+
+  const { data: statements } = await supabase
+    .from("credit_card_statements").select("id").eq("month_id", currentMonth.id);
+  const statementIds = (statements || []).map((s) => s.id);
+  const categoryTotals = {};
+  if (statementIds.length) {
+    const { data: txs } = await supabase
+      .from("credit_card_transactions").select("category, amount").in("statement_id", statementIds);
+    (txs || []).forEach((t) => {
+      const cat = t.category || "Sin categoría";
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + Number(t.amount);
+    });
+  }
+
+  const { data: patrimonioRow } = await supabase
+    .from("v_month_patrimonio").select("total_patrimonio").eq("month_id", currentMonth.id).single();
+
+  return {
+    mes_seleccionado: `${MONTH_NAMES[currentMonth.month - 1]} ${currentMonth.year}`,
+    resumen_por_mes: (summaries || []).map((s) => ({
+      mes: `${MONTH_NAMES[s.month - 1]} ${s.year}`,
+      ingresos: Number(s.total_ingresos),
+      gastos_fijos: Number(s.total_gastos_fijos),
+      gastos_extra: Number(s.total_gastos_extra),
+      tarjeta: Number(s.total_tarjeta),
+      ahorro: Number(s.ahorro),
+    })),
+    gasto_por_categoria_mes_seleccionado: categoryTotals,
+    patrimonio_cuentas_mes_seleccionado: patrimonioRow ? Number(patrimonioRow.total_patrimonio) : null,
+  };
+}
+
+document.getElementById("form-chat").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = document.getElementById("chat-input");
+  const question = input.value.trim();
+  if (!question) return;
+  input.value = "";
+
+  chatMessages.push({ role: "user", text: question });
+  renderChat();
+  chatMessages.push({ role: "assistant", text: "Pensando…", pending: true });
+  renderChat();
+
+  try {
+    const context = await buildChatContext();
+    const { data, error } = await supabase.functions.invoke("ai-chat", {
+      body: { question, context },
+    });
+
+    chatMessages.pop();
+    if (error) {
+      chatMessages.push({ role: "assistant", text: "Hubo un error consultando la IA: " + error.message });
+    } else if (data && data.error) {
+      chatMessages.push({ role: "assistant", text: "Error: " + data.error });
+    } else {
+      chatMessages.push({ role: "assistant", text: (data && data.answer) || "No hubo respuesta." });
+    }
+  } catch (err) {
+    chatMessages.pop();
+    chatMessages.push({ role: "assistant", text: "Error de conexión: " + err.message });
+  }
+  renderChat();
+});
+
 // ---------------- INIT ----------------
 initAuthTabs();

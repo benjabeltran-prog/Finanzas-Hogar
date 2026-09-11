@@ -83,6 +83,9 @@
 
       <div class="side-group-label">Reportes</div>
       <button class="side-tab" data-tab="historial" data-icon="historial">Historial</button>
+
+      <div class="side-group-label">Asistente</div>
+      <button class="side-tab" data-tab="chat" data-icon="sparkles">Chat IA</button>
     </nav>
 
     <main class="content">
@@ -275,6 +278,17 @@
         <button id="btn-generate-report" class="btn-primary">Generar reporte de promedios</button>
       </div>
       <div class="cards-grid" id="report-cards" style="display:none"></div>
+    </section>
+
+    <!-- CHAT IA -->
+    <section id="tab-chat" class="tab-panel">
+      <h2>Chat con IA</h2>
+      <p class="muted">Pregúntale sobre las finanzas de este hogar (ej: "¿cuánto gasté en restaurantes este mes?", "¿cómo voy comparado con el mes pasado?"). Solo ve los datos de este hogar y el mes que tienes seleccionado.</p>
+      <div class="chat-log" id="chat-log"></div>
+      <form id="form-chat" class="inline-form">
+        <input type="text" id="chat-input" placeholder="Escribe tu pregunta..." style="flex:1" required />
+        <button type="submit" class="btn-primary">Enviar</button>
+      </form>
     </section>
 
     </main>
