@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=8" />
+<link rel="stylesheet" href="css/style.css?v=10" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -361,13 +361,31 @@
       </form>
 
       <h3 class="section-title">Calendario</h3>
-      <div class="calendar-nav">
-        <button type="button" id="btn-cal-prev" class="btn-ghost timeline-arrow">‹</button>
-        <h3 id="calendar-month-label"></h3>
-        <button type="button" id="btn-cal-next" class="btn-ghost timeline-arrow">›</button>
+      <div class="calendar-view-toggle">
+        <button type="button" class="view-toggle-btn active" data-cal-view="month">Mes</button>
+        <button type="button" class="view-toggle-btn" data-cal-view="week">Semana</button>
       </div>
-      <div class="calendar-grid" id="calendar-grid"></div>
-      <div id="calendar-day-events"></div>
+
+      <div id="month-view-wrap">
+        <div class="calendar-nav">
+          <button type="button" id="btn-cal-prev" class="btn-ghost timeline-arrow">‹</button>
+          <h3 id="calendar-month-label"></h3>
+          <button type="button" id="btn-cal-next" class="btn-ghost timeline-arrow">›</button>
+        </div>
+        <div class="calendar-grid" id="calendar-grid"></div>
+        <div id="calendar-day-events"></div>
+      </div>
+
+      <div id="week-view-wrap" style="display:none">
+        <div class="calendar-nav">
+          <button type="button" id="btn-week-prev" class="btn-ghost timeline-arrow">‹</button>
+          <h3 id="week-range-label"></h3>
+          <button type="button" id="btn-week-next" class="btn-ghost timeline-arrow">›</button>
+        </div>
+        <div class="week-grid-scroll">
+          <div class="week-grid" id="week-grid"></div>
+        </div>
+      </div>
 
       <h3 class="section-title">Próximas actividades</h3>
       <div id="events-list"></div>
@@ -421,8 +439,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=8"></script>
-<script type="module" src="js/pdfParser.js?v=8"></script>
-<script type="module" src="js/app.js?v=8"></script>
+<script type="module" src="js/supabaseClient.js?v=10"></script>
+<script type="module" src="js/pdfParser.js?v=10"></script>
+<script type="module" src="js/app.js?v=10"></script>
 </body>
 </html>

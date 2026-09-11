@@ -146,7 +146,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   box-shadow: 0 2px 12px rgba(0,0,0,0.15);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 30;
 }
 .topbar-left, .topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
@@ -392,7 +392,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
      del topbar (en vez de barra lateral o barra flotante abajo) */
   .sidebar {
     position: sticky !important;
-    top: 60px !important;
+    top: var(--topbar-height, 64px) !important;
     bottom: auto !important;
     left: 0;
     right: 0;
@@ -448,7 +448,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
      como tercer nivel fijo (topbar > sidebar > timeline) */
   .timeline-nav {
     position: sticky;
-    top: 114px;
+    top: calc(var(--topbar-height, 64px) + var(--sidebar-height, 54px));
     z-index: 15;
     background: var(--bg);
     padding-top: 10px;
@@ -604,7 +604,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   padding-bottom: 4px;
 }
 .calendar-day {
-  aspect-ratio: 1;
+  min-height: 76px;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 6px;
@@ -620,12 +620,96 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .calendar-day.selected { background: rgba(79,140,255,0.15); border-color: var(--accent); }
 .calendar-day.empty { background: transparent; border: none; cursor: default; }
 .calendar-day-num { font-weight: 600; }
-.calendar-day-dots { display: flex; gap: 2px; margin-top: auto; flex-wrap: wrap; }
-.calendar-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-2); }
-@media (max-width: 500px) {
-  .calendar-day { font-size: 0.68em; padding: 3px; border-radius: 6px; }
-  .calendar-dot { width: 4px; height: 4px; }
+.calendar-day-events { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; overflow: hidden; }
+.calendar-event-chip {
+  background: rgba(79,140,255,0.18);
+  color: #cfe0ff;
+  font-size: 0.62em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.calendar-event-more { font-size: 0.6em; color: var(--muted); }
+@media (max-width: 500px) {
+  .calendar-day { font-size: 0.68em; padding: 3px; border-radius: 6px; min-height: 56px; aspect-ratio: auto; }
+  .calendar-event-chip { font-size: 0.58em; }
+}
+
+/* ---------- TOGGLE MES / SEMANA ---------- */
+.calendar-view-toggle {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 16px;
+}
+.view-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 7px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+.view-toggle-btn.active { background: var(--accent); color: white; }
+
+/* ---------- VISTA SEMANA (estilo Google Calendar) ---------- */
+.week-grid-scroll { overflow-x: auto; padding-bottom: 4px; }
+.week-grid {
+  display: grid;
+  grid-template-columns: 52px repeat(7, minmax(92px, 1fr));
+  grid-template-rows: auto repeat(15, 46px);
+  min-width: 720px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--panel);
+}
+.week-corner { grid-column: 1; grid-row: 1; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+.week-day-header {
+  grid-row: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.week-day-header.today { background: rgba(79,140,255,0.1); }
+.week-day-name { font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.3px; color: var(--muted); }
+.week-day-num { font-weight: 700; font-size: 0.95em; }
+.week-hour-label {
+  grid-column: 1;
+  font-size: 0.62em;
+  color: var(--muted);
+  text-align: right;
+  padding-right: 6px;
+  border-right: 1px solid var(--border);
+  transform: translateY(-7px);
+}
+.week-day-column {
+  position: relative;
+  border-right: 1px solid var(--border);
+  background-image: repeating-linear-gradient(to bottom, transparent, transparent 45px, var(--border-soft) 46px);
+}
+.week-event-block {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: white;
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-size: 0.66em;
+  overflow: hidden;
+  cursor: default;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+}
+.week-event-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .category-select { font-size: 0.85em; padding: 4px 6px; max-width: 160px; }
 
 /* ---------- CHAT IA ---------- */

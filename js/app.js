@@ -1568,6 +1568,8 @@ async function loadEvents() {
   attachEventDeleteHandlers(el);
 
   renderCalendarGrid();
+  const weekView = document.getElementById("week-view-wrap");
+  if (weekView && weekView.style.display !== "none") renderWeekGrid();
 }
 
 function renderEventCard(ev) {
@@ -1616,6 +1618,7 @@ function renderCalendarGrid() {
   for (let i = 0; i < startWeekday; i++) html += `<div class="calendar-day empty"></div>`;
 
   const todayStr = new Date().toDateString();
+  const MAX_CHIPS = 2;
   for (let day = 1; day <= daysInMonth; day++) {
     const cellDate = new Date(year, month, day);
     const isToday = cellDate.toDateString() === todayStr;
@@ -1623,10 +1626,15 @@ function renderCalendarGrid() {
       const d = new Date(ev.start_at);
       return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
     });
+    const shown = dayEvents.slice(0, MAX_CHIPS);
+    const extra = dayEvents.length - shown.length;
     html += `
       <div class="calendar-day ${isToday ? "today" : ""}" data-cal-day="${day}">
         <div class="calendar-day-num">${day}</div>
-        <div class="calendar-day-dots">${dayEvents.slice(0, 4).map(() => `<span class="calendar-dot"></span>`).join("")}</div>
+        <div class="calendar-day-events">
+          ${shown.map((ev) => `<div class="calendar-event-chip">${escapeHtml(ev.title)}</div>`).join("")}
+          ${extra > 0 ? `<div class="calendar-event-more">+${extra} más</div>` : ""}
+        </div>
       </div>`;
   }
   grid.innerHTML = html;
@@ -1661,5 +1669,109 @@ document.getElementById("btn-cal-next").addEventListener("click", () => {
   renderCalendarGrid();
 });
 
+// ---------------- VISTA SEMANA (estilo Google Calendar) ----------------
+const WEEK_START_HOUR = 7;
+const WEEK_END_HOUR = 22;
+const WEEK_ROW_HEIGHT = 46;
+let weekViewDate = new Date();
+
+document.querySelectorAll(".view-toggle-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".view-toggle-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    const view = btn.dataset.calView;
+    document.getElementById("month-view-wrap").style.display = view === "month" ? "block" : "none";
+    document.getElementById("week-view-wrap").style.display = view === "week" ? "block" : "none";
+    if (view === "week") renderWeekGrid();
+  });
+});
+
+document.getElementById("btn-week-prev").addEventListener("click", () => {
+  weekViewDate.setDate(weekViewDate.getDate() - 7);
+  renderWeekGrid();
+});
+document.getElementById("btn-week-next").addEventListener("click", () => {
+  weekViewDate.setDate(weekViewDate.getDate() + 7);
+  renderWeekGrid();
+});
+
+function getWeekStart(date) {
+  const d = new Date(date);
+  const dayIdx = (d.getDay() + 6) % 7; // lunes = 0
+  d.setDate(d.getDate() - dayIdx);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function timeToOffsetPx(date) {
+  const hours = date.getHours() + date.getMinutes() / 60;
+  const clamped = Math.max(WEEK_START_HOUR, Math.min(WEEK_END_HOUR, hours));
+  return (clamped - WEEK_START_HOUR) * WEEK_ROW_HEIGHT;
+}
+
+function renderWeekGrid() {
+  const grid = document.getElementById("week-grid");
+  if (!grid) return;
+
+  const weekStart = getWeekStart(weekViewDate);
+  const days = [...Array(7)].map((_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+
+  document.getElementById("week-range-label").textContent =
+    `${days[0].getDate()} ${MONTH_NAMES[days[0].getMonth()].slice(0, 3)} – ${days[6].getDate()} ${MONTH_NAMES[days[6].getMonth()].slice(0, 3)} ${days[6].getFullYear()}`;
+
+  const dayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  const todayStr = new Date().toDateString();
+
+  let headerHtml = `<div class="week-corner"></div>`;
+  days.forEach((d, i) => {
+    const isToday = d.toDateString() === todayStr;
+    headerHtml += `
+      <div class="week-day-header ${isToday ? "today" : ""}" style="grid-column:${i + 2}">
+        <div class="week-day-name">${dayLabels[i]}</div>
+        <div class="week-day-num">${d.getDate()}</div>
+      </div>`;
+  });
+
+  let hourLabelsHtml = "";
+  for (let h = WEEK_START_HOUR; h < WEEK_END_HOUR; h++) {
+    hourLabelsHtml += `<div class="week-hour-label" style="grid-row:${h - WEEK_START_HOUR + 2}">${String(h).padStart(2, "0")}:00</div>`;
+  }
+
+  let dayColumnsHtml = "";
+  days.forEach((d, i) => {
+    const dayEvents = allHouseholdEvents.filter((ev) => new Date(ev.start_at).toDateString() === d.toDateString());
+    const eventsHtml = dayEvents.map((ev) => {
+      const start = new Date(ev.start_at);
+      const end = ev.end_at ? new Date(ev.end_at) : new Date(start.getTime() + 60 * 60 * 1000);
+      const top = timeToOffsetPx(start);
+      const height = Math.max(20, timeToOffsetPx(end) - top);
+      return `<div class="week-event-block" style="top:${top}px; height:${height}px;" title="${escapeHtml(ev.title)}">
+        <span class="week-event-title">${escapeHtml(ev.title)}</span>
+      </div>`;
+    }).join("");
+    dayColumnsHtml += `<div class="week-day-column" style="grid-column:${i + 2}; grid-row: 2 / -1;">${eventsHtml}</div>`;
+  });
+
+  grid.style.gridTemplateRows = `auto repeat(${WEEK_END_HOUR - WEEK_START_HOUR}, ${WEEK_ROW_HEIGHT}px)`;
+  grid.innerHTML = headerHtml + hourLabelsHtml + dayColumnsHtml;
+}
+
 // ---------------- INIT ----------------
 initAuthTabs();
+
+// Mide el alto real del topbar y del sidebar para que el sticky
+// del timeline (en mobile) se pegue en el lugar exacto, sin adivinar píxeles.
+function updateStickyOffsets() {
+  const topbar = document.querySelector(".topbar");
+  const sidebar = document.querySelector(".sidebar");
+  if (topbar) document.documentElement.style.setProperty("--topbar-height", `${topbar.offsetHeight}px`);
+  if (sidebar) document.documentElement.style.setProperty("--sidebar-height", `${sidebar.offsetHeight}px`);
+}
+updateStickyOffsets();
+window.addEventListener("resize", updateStickyOffsets);
+window.addEventListener("orientationchange", updateStickyOffsets);
+setTimeout(updateStickyOffsets, 300); // por si las fuentes/iconos cambian el alto al cargar
