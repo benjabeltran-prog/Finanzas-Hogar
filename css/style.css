@@ -209,6 +209,40 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 }
 .ticker-text.fade-out { opacity: 0; transform: translateY(4px); }
 
+.month-switcher {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 6px;
+}
+.month-switcher-arrow {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.1em;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.month-switcher-arrow:hover { background: rgba(79,140,255,0.15); }
+.month-switcher-label {
+  font-size: 0.8em;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 0 2px;
+  min-width: 74px;
+  text-align: center;
+}
+
 .drawer-overlay {
   position: fixed;
   inset: 0;
@@ -354,54 +388,73 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 @media (max-width: 860px) {
   .app-body { flex-direction: column; }
 
-  /* El sidebar se convierte en una barra de navegación inferior fija,
-     como en una app nativa (iOS/Android tab bar) */
+  /* El sidebar pasa a ser una fila horizontal fija, pegada justo debajo
+     del topbar (en vez de barra lateral o barra flotante abajo) */
   .sidebar {
-    position: fixed;
-    bottom: 0;
+    position: sticky !important;
+    top: 60px !important;
+    bottom: auto !important;
     left: 0;
     right: 0;
     width: 100%;
+    height: 54px;
+    max-height: 54px;
     display: flex;
     flex-direction: row;
-    justify-content: space-around;
+    justify-content: flex-start;
     align-items: stretch;
     gap: 2px;
     min-height: auto;
     background: var(--panel);
     border-right: none;
-    border-top: 1px solid var(--border);
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    border-bottom: 1px solid var(--border);
+    padding: 6px 8px;
     overflow-x: auto;
-    z-index: 150;
-    box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+    overflow-y: hidden;
+    z-index: 20;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   }
   .side-group-label { display: none; }
   .side-tab {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
+    gap: 2px;
     width: auto;
-    flex: 1 0 auto;
-    min-width: 62px;
+    flex: 0 0 auto;
+    min-width: 58px;
     border-left: none;
-    border-radius: 10px;
-    padding: 7px 4px;
-    font-size: 0.65em;
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 0.6em;
     text-align: center;
     margin-bottom: 0;
   }
   .side-tab span { white-space: nowrap; }
   .side-tab.active { border-left: none; background: rgba(79,140,255,0.16); }
 
-  .content { max-width: 100%; padding: 18px 16px calc(88px + env(safe-area-inset-bottom)); }
+  .content { max-width: 100%; padding: 16px 16px calc(24px + env(safe-area-inset-bottom)); }
 
   .topbar { padding: 10px 14px; gap: 8px; }
   .topbar-left, .topbar-right { gap: 8px; }
+  .topbar-ticker { max-width: 32vw; }
+  .ticker-text { font-size: 0.75em; }
+  .month-switcher-label { min-width: 0; font-size: 0.75em; }
 
-  .chat-widget { bottom: calc(78px + env(safe-area-inset-bottom)); right: 16px; }
+  .chat-widget { bottom: calc(16px + env(safe-area-inset-bottom)); right: 16px; }
   .chat-popup { width: calc(100vw - 32px); }
+
+  /* El timeline de meses queda pegado justo debajo del sidebar,
+     como tercer nivel fijo (topbar > sidebar > timeline) */
+  .timeline-nav {
+    position: sticky;
+    top: 114px;
+    z-index: 15;
+    background: var(--bg);
+    padding-top: 10px;
+    padding-bottom: 6px;
+    margin-bottom: 0;
+  }
 
   /* Evita que iOS haga zoom automático al enfocar campos (necesita >=16px) */
   input, select, textarea { font-size: 16px !important; }
@@ -475,6 +528,104 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   cursor: pointer;
 }
 .checkbox-label input[type="checkbox"] { cursor: pointer; }
+
+/* ---------- LISTA DE COMPRAS ---------- */
+.shopping-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+.shopping-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; flex: 0 0 auto; }
+.shopping-item .shopping-name { flex: 1; font-size: 0.92em; }
+.shopping-item.purchased .shopping-name { text-decoration: line-through; color: var(--muted); }
+.recurring-badge {
+  font-size: 0.7em;
+  background: rgba(124,92,255,0.15);
+  color: var(--accent-2);
+  padding: 3px 8px;
+  border-radius: 10px;
+  flex: 0 0 auto;
+}
+
+/* ---------- PLANIFICACIÓN / EVENTOS ---------- */
+.event-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.event-info { flex: 1; min-width: 200px; }
+.event-title { font-weight: 600; margin-bottom: 4px; }
+.event-time { font-size: 0.82em; color: var(--muted); }
+.event-desc { font-size: 0.85em; color: var(--muted); margin-top: 4px; }
+.event-actions { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+.event-gcal-link {
+  font-size: 0.8em;
+  color: var(--accent);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.event-gcal-link:hover { border-color: var(--accent); }
+
+/* ---------- CALENDARIO VISUAL ---------- */
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.calendar-nav h3 { margin: 0; font-size: 1em; }
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.calendar-weekday {
+  font-size: 0.7em;
+  color: var(--muted);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding-bottom: 4px;
+}
+.calendar-day {
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  font-size: 0.8em;
+  cursor: pointer;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.calendar-day:hover { border-color: var(--accent); }
+.calendar-day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.calendar-day.selected { background: rgba(79,140,255,0.15); border-color: var(--accent); }
+.calendar-day.empty { background: transparent; border: none; cursor: default; }
+.calendar-day-num { font-weight: 600; }
+.calendar-day-dots { display: flex; gap: 2px; margin-top: auto; flex-wrap: wrap; }
+.calendar-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-2); }
+@media (max-width: 500px) {
+  .calendar-day { font-size: 0.68em; padding: 3px; border-radius: 6px; }
+  .calendar-dot { width: 4px; height: 4px; }
+}
 .category-select { font-size: 0.85em; padding: 4px 6px; max-width: 160px; }
 
 /* ---------- CHAT IA ---------- */

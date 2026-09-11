@@ -36,6 +36,8 @@ const ICONS = {
   Entretenimiento: '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>',
   Servicios: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
   "Sin categoría": '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  compras: '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>',
+  planificacion: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
 };
 
 function icon(name, size = 18) {
@@ -180,6 +182,8 @@ async function selectHousehold(id) {
   document.getElementById("household-select").value = id;
   document.getElementById("current-join-code").textContent = currentHousehold.join_code;
   await loadMonths();
+  await loadShoppingList();
+  await loadEvents();
 }
 
 // ---------------- MODAL DE HOGARES ----------------
@@ -308,6 +312,8 @@ async function createMonth(year, month) {
 async function selectMonth(id) {
   currentMonth = months.find((m) => m.id === id) || (await fetchMonthById(id));
   document.getElementById("month-select").value = id;
+  const label = document.getElementById("month-switcher-label");
+  if (label) label.textContent = `${MONTH_NAMES[currentMonth.month - 1].slice(0, 3)} ${currentMonth.year}`;
   await refreshAll();
 }
 
@@ -327,6 +333,8 @@ function navigateMonth(delta) {
 
 document.getElementById("btn-prev-month").addEventListener("click", () => navigateMonth(-1));
 document.getElementById("btn-next-month").addEventListener("click", () => navigateMonth(1));
+document.getElementById("btn-prev-month-top").addEventListener("click", () => navigateMonth(-1));
+document.getElementById("btn-next-month-top").addEventListener("click", () => navigateMonth(1));
 
 function renderTimeline(summariesByMonthId) {
   const strip = document.getElementById("timeline-strip");
@@ -1421,6 +1429,236 @@ document.getElementById("form-chat").addEventListener("submit", async (e) => {
     chatMessages.push({ role: "assistant", text: "Error de conexión: " + err.message });
   }
   renderChat();
+});
+
+// ============================================================
+// LISTA DE COMPRAS
+// ============================================================
+document.getElementById("form-shopping-item").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("shopping-item-name").value.trim();
+  const is_recurring = document.getElementById("shopping-item-recurring").checked;
+  if (!name) return;
+
+  const { error } = await supabase.from("shopping_list_items").insert({
+    household_id: currentHousehold.id, name, is_recurring,
+  });
+  if (error) { alert("Error agregando ítem: " + error.message); return; }
+  e.target.reset();
+  await loadShoppingList();
+});
+
+document.getElementById("btn-clear-purchased").addEventListener("click", async () => {
+  if (!confirm("¿Borrar todos los ítems comprados de la lista?")) return;
+  await supabase.from("shopping_list_items")
+    .delete().eq("household_id", currentHousehold.id).eq("is_purchased", true);
+  await loadShoppingList();
+});
+
+async function loadShoppingList() {
+  const { data } = await supabase
+    .from("shopping_list_items").select("*").eq("household_id", currentHousehold.id)
+    .order("created_at");
+  const items = data || [];
+
+  const pending = items.filter((i) => !i.is_purchased);
+  const purchased = items.filter((i) => i.is_purchased);
+
+  const renderItem = (item) => `
+    <div class="shopping-item ${item.is_purchased ? "purchased" : ""}">
+      <input type="checkbox" data-shopping-id="${item.id}" data-recurring="${item.is_recurring}" ${item.is_purchased ? "checked" : ""} />
+      <span class="shopping-name">${escapeHtml(item.name)}</span>
+      ${item.is_recurring ? '<span class="recurring-badge">Recurrente</span>' : ""}
+      <button class="btn-danger" data-del-shopping="${item.id}">${icon("trash", 14)}</button>
+    </div>`;
+
+  document.getElementById("shopping-list-pending").innerHTML = pending.length
+    ? pending.map(renderItem).join("")
+    : `<p class="muted">No hay nada pendiente por comprar.</p>`;
+
+  document.getElementById("shopping-list-purchased").innerHTML = purchased.length
+    ? purchased.map(renderItem).join("")
+    : `<p class="muted">Nada comprado todavía.</p>`;
+
+  document.querySelectorAll("[data-shopping-id]").forEach((cb) => {
+    cb.addEventListener("change", async () => {
+      const id = cb.dataset.shoppingId;
+      const isRecurring = cb.dataset.recurring === "true";
+      const nowPurchased = cb.checked;
+
+      await supabase.from("shopping_list_items").update({
+        is_purchased: nowPurchased, purchased_at: nowPurchased ? new Date().toISOString() : null,
+      }).eq("id", id);
+
+      // Si es recurrente y se acaba de marcar como comprado, vuelve solo a la lista
+      if (nowPurchased && isRecurring) {
+        const { data: item } = await supabase.from("shopping_list_items").select("name").eq("id", id).single();
+        if (item) {
+          await supabase.from("shopping_list_items").insert({
+            household_id: currentHousehold.id, name: item.name, is_recurring: true,
+          });
+        }
+      }
+      await loadShoppingList();
+    });
+  });
+
+  document.querySelectorAll("[data-del-shopping]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await supabase.from("shopping_list_items").delete().eq("id", btn.dataset.delShopping);
+      await loadShoppingList();
+    });
+  });
+}
+
+// ============================================================
+// PLANIFICACIÓN DEL HOGAR (actividades / eventos)
+// ============================================================
+document.getElementById("form-event").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const title = document.getElementById("event-title").value.trim();
+  const description = document.getElementById("event-description").value.trim();
+  const startRaw = document.getElementById("event-start").value;
+  const endRaw = document.getElementById("event-end").value;
+  if (!title || !startRaw) return;
+
+  const { error } = await supabase.from("household_events").insert({
+    household_id: currentHousehold.id,
+    title,
+    description: description || null,
+    start_at: new Date(startRaw).toISOString(),
+    end_at: endRaw ? new Date(endRaw).toISOString() : null,
+    created_by: currentUser.id,
+    created_by_email: currentUser.email,
+  });
+  if (error) { alert("Error agregando actividad: " + error.message); return; }
+  e.target.reset();
+  await loadEvents();
+});
+
+function formatEventDateTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleString("es-CL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function googleCalendarLink(ev) {
+  const fmtGCal = (iso) => iso.replace(/[-:]/g, "").split(".")[0] + "Z";
+  const start = fmtGCal(ev.start_at);
+  const end = ev.end_at ? fmtGCal(ev.end_at) : fmtGCal(new Date(new Date(ev.start_at).getTime() + 60 * 60 * 1000).toISOString());
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: ev.title,
+    dates: `${start}/${end}`,
+    details: ev.description || "",
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+async function loadEvents() {
+  const { data } = await supabase
+    .from("household_events").select("*").eq("household_id", currentHousehold.id)
+    .order("start_at", { ascending: true });
+  allHouseholdEvents = data || [];
+
+  const el = document.getElementById("events-list");
+  el.innerHTML = allHouseholdEvents.length
+    ? allHouseholdEvents.map((ev) => renderEventCard(ev)).join("")
+    : `<p class="muted">No hay actividades agendadas.</p>`;
+  attachEventDeleteHandlers(el);
+
+  renderCalendarGrid();
+}
+
+function renderEventCard(ev) {
+  return `
+    <div class="event-card">
+      <div class="event-info">
+        <div class="event-title">${escapeHtml(ev.title)}</div>
+        <div class="event-time">${formatEventDateTime(ev.start_at)}${ev.end_at ? " – " + formatEventDateTime(ev.end_at) : ""}</div>
+        ${ev.description ? `<div class="event-desc">${escapeHtml(ev.description)}</div>` : ""}
+        ${ev.created_by_email ? `<div class="event-desc">Agregado por ${escapeHtml(ev.created_by_email)}</div>` : ""}
+      </div>
+      <div class="event-actions">
+        <a class="event-gcal-link" href="${googleCalendarLink(ev)}" target="_blank" rel="noopener">+ Google Calendar</a>
+        <button class="btn-danger" data-del-event="${ev.id}">${icon("trash", 14)}</button>
+      </div>
+    </div>`;
+}
+
+function attachEventDeleteHandlers(container) {
+  container.querySelectorAll("[data-del-event]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await supabase.from("household_events").delete().eq("id", btn.dataset.delEvent);
+      await loadEvents();
+    });
+  });
+}
+
+// ---------------- CALENDARIO VISUAL (cuadrícula mensual) ----------------
+let allHouseholdEvents = [];
+let calendarViewDate = new Date();
+
+function renderCalendarGrid() {
+  const grid = document.getElementById("calendar-grid");
+  if (!grid) return;
+
+  const year = calendarViewDate.getFullYear();
+  const month = calendarViewDate.getMonth(); // 0-indexado
+  document.getElementById("calendar-month-label").textContent = `${MONTH_NAMES[month]} ${year}`;
+
+  const firstDay = new Date(year, month, 1);
+  const startWeekday = (firstDay.getDay() + 6) % 7; // lunes = 0
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const weekdayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+  let html = weekdayLabels.map((w) => `<div class="calendar-weekday">${w}</div>`).join("");
+  for (let i = 0; i < startWeekday; i++) html += `<div class="calendar-day empty"></div>`;
+
+  const todayStr = new Date().toDateString();
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cellDate = new Date(year, month, day);
+    const isToday = cellDate.toDateString() === todayStr;
+    const dayEvents = allHouseholdEvents.filter((ev) => {
+      const d = new Date(ev.start_at);
+      return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+    });
+    html += `
+      <div class="calendar-day ${isToday ? "today" : ""}" data-cal-day="${day}">
+        <div class="calendar-day-num">${day}</div>
+        <div class="calendar-day-dots">${dayEvents.slice(0, 4).map(() => `<span class="calendar-dot"></span>`).join("")}</div>
+      </div>`;
+  }
+  grid.innerHTML = html;
+
+  grid.querySelectorAll("[data-cal-day]").forEach((cell) => {
+    cell.addEventListener("click", () => {
+      grid.querySelectorAll(".calendar-day").forEach((c) => c.classList.remove("selected"));
+      cell.classList.add("selected");
+      renderDayEvents(year, month, Number(cell.dataset.calDay));
+    });
+  });
+}
+
+function renderDayEvents(year, month, day) {
+  const dayEvents = allHouseholdEvents.filter((ev) => {
+    const d = new Date(ev.start_at);
+    return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+  });
+  const el = document.getElementById("calendar-day-events");
+  el.innerHTML = dayEvents.length
+    ? dayEvents.map((ev) => renderEventCard(ev)).join("")
+    : `<p class="muted">Sin actividades ese día.</p>`;
+  attachEventDeleteHandlers(el);
+}
+
+document.getElementById("btn-cal-prev").addEventListener("click", () => {
+  calendarViewDate.setMonth(calendarViewDate.getMonth() - 1);
+  renderCalendarGrid();
+});
+document.getElementById("btn-cal-next").addEventListener("click", () => {
+  calendarViewDate.setMonth(calendarViewDate.getMonth() + 1);
+  renderCalendarGrid();
 });
 
 // ---------------- INIT ----------------

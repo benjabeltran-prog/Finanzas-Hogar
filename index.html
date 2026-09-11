@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/style.css?v=8" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -63,7 +63,13 @@
         <span id="ticker-text" class="ticker-text"></span>
       </div>
     </div>
-    <div class="topbar-right"></div>
+    <div class="topbar-right">
+      <div class="month-switcher">
+        <button type="button" id="btn-prev-month-top" class="month-switcher-arrow" title="Mes anterior">‹</button>
+        <span id="month-switcher-label" class="month-switcher-label"></span>
+        <button type="button" id="btn-next-month-top" class="month-switcher-arrow" title="Mes siguiente">›</button>
+      </div>
+    </div>
   </header>
 
   <div class="drawer-overlay" id="drawer-overlay" style="display:none"></div>
@@ -119,6 +125,10 @@
 
       <div class="side-group-label">Reportes</div>
       <button class="side-tab" data-tab="historial" data-icon="historial">Historial</button>
+
+      <div class="side-group-label">Hogar</div>
+      <button class="side-tab" data-tab="compras" data-icon="compras">Lista de Compras</button>
+      <button class="side-tab" data-tab="planificacion" data-icon="planificacion">Planificación</button>
     </nav>
 
     <main class="content">
@@ -313,6 +323,54 @@
       <div class="cards-grid" id="report-cards" style="display:none"></div>
     </section>
 
+    <!-- LISTA DE COMPRAS -->
+    <section id="tab-compras" class="tab-panel">
+      <h2>Lista de compras</h2>
+      <p class="muted">Todo lo que agregues acá lo ve cualquiera del hogar. Marca "Recurrente" para los productos que siempre repites (ej: leche, pan) — al comprarlos, vuelven solos a la lista para la próxima vez.</p>
+
+      <form id="form-shopping-item" class="inline-form">
+        <input type="text" id="shopping-item-name" placeholder="Ej: Leche, Detergente, Pilas" required style="flex:1" />
+        <label class="checkbox-label">
+          <input type="checkbox" id="shopping-item-recurring" />
+          Recurrente
+        </label>
+        <button type="submit" class="btn-primary">Agregar</button>
+      </form>
+
+      <h3 class="section-title">Por comprar</h3>
+      <div id="shopping-list-pending"></div>
+
+      <h3 class="section-title">Comprado recientemente</h3>
+      <div class="inline-form">
+        <button id="btn-clear-purchased" class="btn-ghost">Vaciar comprados</button>
+      </div>
+      <div id="shopping-list-purchased"></div>
+    </section>
+
+    <!-- PLANIFICACIÓN DEL HOGAR -->
+    <section id="tab-planificacion" class="tab-panel">
+      <h2>Planificación del hogar</h2>
+      <p class="muted">Actividades del hogar visibles para todos los miembros. Cada una se puede agregar con un clic al Google Calendar personal de quien la vea.</p>
+
+      <form id="form-event" class="inline-form">
+        <input type="text" id="event-title" placeholder="Actividad (ej: Reunión apoderados)" required style="flex:1 1 100%" />
+        <input type="text" id="event-description" placeholder="Descripción (opcional)" style="flex:1 1 100%" />
+        <input type="datetime-local" id="event-start" required />
+        <input type="datetime-local" id="event-end" />
+        <button type="submit" class="btn-primary">Agregar</button>
+      </form>
+
+      <h3 class="section-title">Calendario</h3>
+      <div class="calendar-nav">
+        <button type="button" id="btn-cal-prev" class="btn-ghost timeline-arrow">‹</button>
+        <h3 id="calendar-month-label"></h3>
+        <button type="button" id="btn-cal-next" class="btn-ghost timeline-arrow">›</button>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+      <div id="calendar-day-events"></div>
+
+      <h3 class="section-title">Próximas actividades</h3>
+      <div id="events-list"></div>
     </section>
 
     </main>
@@ -363,8 +421,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js"></script>
-<script type="module" src="js/pdfParser.js"></script>
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/supabaseClient.js?v=8"></script>
+<script type="module" src="js/pdfParser.js?v=8"></script>
+<script type="module" src="js/app.js?v=8"></script>
 </body>
 </html>
