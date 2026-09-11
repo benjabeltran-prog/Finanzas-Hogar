@@ -1422,7 +1422,8 @@ document.getElementById("form-chat").addEventListener("submit", async (e) => {
     } else if (data && data.error) {
       chatMessages.push({ role: "assistant", text: "Error: " + data.error });
     } else {
-      chatMessages.push({ role: "assistant", text: (data && data.answer) || "No hubo respuesta." });
+      const replyText = await executeChatResponse(data && data.answer);
+      chatMessages.push({ role: "assistant", text: replyText });
     }
   } catch (err) {
     chatMessages.pop();
@@ -1758,6 +1759,64 @@ function renderWeekGrid() {
 
   grid.style.gridTemplateRows = `auto repeat(${WEEK_END_HOUR - WEEK_START_HOUR}, ${WEEK_ROW_HEIGHT}px)`;
   grid.innerHTML = headerHtml + hourLabelsHtml + dayColumnsHtml;
+}
+
+// ============================================================
+// EJECUTAR ACCIONES DEVUELTAS POR EL CHAT (agregar, agendar, gastar)
+// ============================================================
+async function executeChatResponse(rawAnswer) {
+  if (!rawAnswer) return "No hubo respuesta.";
+
+  let parsed;
+  try {
+    parsed = JSON.parse(rawAnswer);
+  } catch {
+    return rawAnswer; // no vino en JSON (raro), mostramos el texto tal cual
+  }
+
+  const action = parsed.action || "none";
+  const params = parsed.params || {};
+  const reply = parsed.reply || "Listo.";
+
+  try {
+    if (action === "add_shopping_item") {
+      const { error } = await supabase.from("shopping_list_items").insert({
+        household_id: currentHousehold.id,
+        name: params.name,
+        is_recurring: !!params.is_recurring,
+      });
+      if (error) return `${reply}\n\n(Pero hubo un error guardándolo: ${error.message})`;
+      await loadShoppingList();
+    } else if (action === "add_event") {
+      const { error } = await supabase.from("household_events").insert({
+        household_id: currentHousehold.id,
+        title: params.title,
+        description: params.description || null,
+        start_at: new Date(params.start_at).toISOString(),
+        end_at: params.end_at ? new Date(params.end_at).toISOString() : null,
+        created_by: currentUser.id,
+        created_by_email: currentUser.email,
+      });
+      if (error) return `${reply}\n\n(Pero hubo un error agendándolo: ${error.message})`;
+      await loadEvents();
+    } else if (action === "add_expense") {
+      if (!currentMonth) return `${reply}\n\n(No hay un mes seleccionado para registrar el gasto.)`;
+      const { error } = await supabase.from("extra_expenses").insert({
+        household_id: currentHousehold.id,
+        month_id: currentMonth.id,
+        name: params.name,
+        amount: params.amount,
+      });
+      if (error) return `${reply}\n\n(Pero hubo un error guardándolo: ${error.message})`;
+      await loadExtraExpenses();
+      await loadDashboard();
+      await loadHistory();
+    }
+  } catch (err) {
+    return `${reply}\n\n(Pero hubo un error ejecutando la acción: ${err.message})`;
+  }
+
+  return reply;
 }
 
 // ---------------- INIT ----------------
