@@ -70,19 +70,19 @@
 
   <div class="app-body">
     <nav class="sidebar">
-      <button class="side-tab active" data-tab="dashboard">Dashboard</button>
+      <button class="side-tab active" data-tab="dashboard" data-icon="dashboard">Dashboard</button>
 
       <div class="side-group-label">Registrar</div>
-      <button class="side-tab" data-tab="ingresos">Ingresos</button>
-      <button class="side-tab" data-tab="fijos">Gastos Fijos</button>
-      <button class="side-tab" data-tab="extra">Gastos Extra</button>
-      <button class="side-tab" data-tab="tarjeta">Tarjeta de Crédito</button>
+      <button class="side-tab" data-tab="ingresos" data-icon="ingresos">Ingresos</button>
+      <button class="side-tab" data-tab="fijos" data-icon="fijos">Gastos Fijos</button>
+      <button class="side-tab" data-tab="extra" data-icon="extra">Gastos Extra</button>
+      <button class="side-tab" data-tab="tarjeta" data-icon="tarjeta">Tarjeta de Crédito</button>
 
       <div class="side-group-label">Patrimonio</div>
-      <button class="side-tab" data-tab="ahorros">Ahorros</button>
+      <button class="side-tab" data-tab="ahorros" data-icon="ahorros">Ahorros</button>
 
       <div class="side-group-label">Reportes</div>
-      <button class="side-tab" data-tab="historial">Historial</button>
+      <button class="side-tab" data-tab="historial" data-icon="historial">Historial</button>
     </nav>
 
     <main class="content">
@@ -94,6 +94,8 @@
         <div class="timeline-strip" id="timeline-strip"></div>
         <button id="btn-next-month" class="btn-ghost timeline-arrow" title="Mes siguiente">›</button>
       </div>
+
+      <div class="narrative-box" id="monthly-narrative"></div>
 
       <h3 class="section-title">Este mes</h3>
       <div class="cards-grid" id="dashboard-cards"></div>
@@ -139,6 +141,9 @@
     <!-- GASTOS FIJOS -->
     <section id="tab-fijos" class="tab-panel">
       <h2>Gastos fijos (servicios, colegio, actividades)</h2>
+      <div class="inline-form">
+        <button id="btn-copy-fixed" class="btn-ghost">Copiar del mes anterior</button>
+      </div>
       <form id="form-fixed" class="inline-form">
         <select id="fixed-category">
           <option value="servicios">Servicios</option>

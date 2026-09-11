@@ -242,6 +242,21 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   border-left-color: var(--accent);
   font-weight: 600;
 }
+.side-tab { display: flex; align-items: center; gap: 10px; }
+.icon-inline { flex-shrink: 0; vertical-align: -3px; }
+
+.narrative-box {
+  background: linear-gradient(135deg, rgba(79,140,255,0.1), rgba(124,92,255,0.1));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  font-size: 0.95em;
+  line-height: 1.55;
+}
+.narrative-box p { margin: 0; display: flex; align-items: flex-start; gap: 10px; }
+.narrative-box .icon-inline { color: var(--accent-2); margin-top: 2px; }
+.narrative-box:empty { display: none; }
 
 .content { flex: 1 1 auto; padding: 28px 36px; max-width: 1400px; }
 .tab-panel { display: none; }
@@ -334,6 +349,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   cursor: pointer;
 }
 .checkbox-label input[type="checkbox"] { cursor: pointer; }
+.category-select { font-size: 0.85em; padding: 4px 6px; max-width: 160px; }
 
 /* ---------- TIMELINE ---------- */
 .timeline-nav {
@@ -397,6 +413,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 /* ---------- CATEGORY RANKING ---------- */
 .category-rank { margin-bottom: 24px; }
 .category-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.category-row .cat-name:first-child { width: 20px; flex: 0 0 auto; display: flex; }
 .category-row .cat-name { width: 140px; flex: 0 0 auto; font-size: 0.85em; color: var(--muted); }
 .category-row .bar-wrap { flex: 1; background: var(--panel-2); border-radius: 6px; height: 10px; overflow: hidden; }
 .category-row .bar { height: 100%; border-radius: 6px; transition: width 0.4s ease; }
