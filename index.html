@@ -2,6 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
+<script>
+  (function() {
+    try {
+      var t = localStorage.getItem("hogar-finanzas-theme") || "dark";
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0d1117" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -15,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=11" />
+<link rel="stylesheet" href="css/style.css?v=15" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -64,6 +72,7 @@
       </div>
     </div>
     <div class="topbar-right">
+      <button type="button" id="theme-toggle" class="theme-toggle-btn" title="Cambiar tema"></button>
       <div class="month-switcher">
         <button type="button" id="btn-prev-month-top" class="month-switcher-arrow" title="Mes anterior">‹</button>
         <span id="month-switcher-label" class="month-switcher-label"></span>
@@ -175,10 +184,14 @@
         <input type="text" id="income-person" placeholder="Nombre (ej: Benja, Pareja)" required />
         <input type="text" id="income-desc" placeholder="Descripción (ej: Sueldo)" />
         <input type="number" id="income-amount" placeholder="Monto" step="1" required />
+        <label class="checkbox-label separate-mode-only" id="income-shared-wrap" style="display:none">
+          <input type="checkbox" id="income-shared" />
+          Compartir con el resto del hogar
+        </label>
         <button type="submit" class="btn-primary">Agregar</button>
       </form>
       <table class="data-table" id="table-incomes">
-        <thead><tr><th>Persona</th><th>Descripción</th><th>Monto</th><th></th></tr></thead>
+        <thead><tr><th>Persona</th><th>Descripción</th><th>Monto</th><th class="separate-mode-only" style="display:none">Visibilidad</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
       <p class="total-row">Total ingresos: <strong id="total-incomes">$0</strong></p>
@@ -199,10 +212,11 @@
         </select>
         <input type="text" id="fixed-name" placeholder="Nombre (ej: Luz, Colegio Juan)" required />
         <input type="number" id="fixed-amount" placeholder="Monto" step="1" required />
+        <select id="fixed-responsible" class="separate-mode-only" style="display:none"></select>
         <button type="submit" class="btn-primary">Agregar</button>
       </form>
       <table class="data-table" id="table-fixed">
-        <thead><tr><th>Categoría</th><th>Nombre</th><th>Monto</th><th></th></tr></thead>
+        <thead><tr><th>Categoría</th><th>Nombre</th><th>Monto</th><th class="separate-mode-only" style="display:none">Responsable</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
       <p class="total-row">Total gastos fijos: <strong id="total-fixed">$0</strong></p>
@@ -215,10 +229,11 @@
         <input type="text" id="extra-name" placeholder="Descripción" required />
         <input type="date" id="extra-date" />
         <input type="number" id="extra-amount" placeholder="Monto" step="1" required />
+        <select id="extra-responsible" class="separate-mode-only" style="display:none"></select>
         <button type="submit" class="btn-primary">Agregar</button>
       </form>
       <table class="data-table" id="table-extra">
-        <thead><tr><th>Descripción</th><th>Fecha</th><th>Monto</th><th></th></tr></thead>
+        <thead><tr><th>Descripción</th><th>Fecha</th><th>Monto</th><th class="separate-mode-only" style="display:none">Responsable</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
       <p class="total-row">Total gastos extra: <strong id="total-extra">$0</strong></p>
@@ -419,6 +434,21 @@
       <h4>Crear nuevo hogar</h4>
       <div class="inline-form">
         <input type="text" id="new-household-name" placeholder="Nombre del hogar" />
+        <input type="text" id="new-household-display-name" placeholder="Tu nombre en este hogar" />
+      </div>
+      <div class="mode-choice-group">
+        <label class="mode-choice">
+          <input type="radio" name="new-household-mode" value="joint" checked />
+          <span class="mode-choice-title">En conjunto</span>
+          <span class="mode-choice-desc">Todo se junta: ingresos y gastos compartidos entre todos.</span>
+        </label>
+        <label class="mode-choice">
+          <input type="radio" name="new-household-mode" value="separate" />
+          <span class="mode-choice-title">Separado</span>
+          <span class="mode-choice-desc">Cada uno con su ingreso (privado o compartido a elección) y gastos con responsable asignado.</span>
+        </label>
+      </div>
+      <div class="inline-form">
         <button id="btn-create-household" class="btn-primary">Crear</button>
       </div>
     </div>
@@ -427,6 +457,7 @@
       <p class="muted">Pide el código de invitación al dueño del hogar.</p>
       <div class="inline-form">
         <input type="text" id="join-code" placeholder="Código de invitación" />
+        <input type="text" id="join-display-name" placeholder="Tu nombre en este hogar" />
         <button id="btn-join-household" class="btn-primary">Unirme</button>
       </div>
     </div>
@@ -435,12 +466,19 @@
       <p id="current-join-code" class="join-code-display">—</p>
       <p class="muted">Comparte este código con quien quieras que se una a este hogar.</p>
     </div>
+    <div class="modal-section">
+      <h4>Tu nombre en el hogar actual</h4>
+      <div class="inline-form">
+        <input type="text" id="my-display-name" placeholder="Tu nombre" />
+        <button id="btn-save-display-name" class="btn-ghost">Guardar</button>
+      </div>
+    </div>
     <button id="btn-close-household-modal" class="btn-ghost">Cerrar</button>
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=11"></script>
-<script type="module" src="js/pdfParser.js?v=11"></script>
-<script type="module" src="js/app.js?v=11"></script>
+<script type="module" src="js/supabaseClient.js?v=15"></script>
+<script type="module" src="js/pdfParser.js?v=15"></script>
+<script type="module" src="js/app.js?v=15"></script>
 </body>
 </html>
