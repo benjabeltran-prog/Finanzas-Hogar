@@ -301,7 +301,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   border-right: 1px solid var(--border);
   box-shadow: var(--shadow);
   z-index: 301;
-  padding: max(16px, env(safe-area-inset-top)) 16px 16px;
+  padding: calc(var(--topbar-height, 64px) + 8px) 16px 16px;
   overflow-y: auto;
   transform: translateX(-100%);
   transition: transform 0.22s ease;
