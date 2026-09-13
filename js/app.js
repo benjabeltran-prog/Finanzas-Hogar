@@ -38,6 +38,8 @@ const ICONS = {
   "Sin categoría": '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
   compras: '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>',
   planificacion: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+  moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
 };
 
 function icon(name, size = 18) {
@@ -92,15 +94,24 @@ document.getElementById("btn-logout").addEventListener("click", async () => {
   await supabase.auth.signOut();
 });
 
+let appBootstrapped = false;
+
 supabase.auth.onAuthStateChange((_event, session) => {
   if (session?.user) {
+    const isNewLogin = !currentUser || currentUser.id !== session.user.id;
     currentUser = session.user;
     document.getElementById("auth-screen").style.display = "none";
     document.getElementById("app-screen").style.display = "block";
     document.getElementById("user-email").textContent = currentUser.email;
-    bootstrapApp();
+    // Solo re-inicializamos (hogar/mes por defecto) en el primer login real,
+    // no en cada renovación de token (ej: al volver a la pestaña del navegador).
+    if (!appBootstrapped || isNewLogin) {
+      appBootstrapped = true;
+      bootstrapApp();
+    }
   } else {
     currentUser = null;
+    appBootstrapped = false;
     document.getElementById("auth-screen").style.display = "flex";
     document.getElementById("app-screen").style.display = "none";
   }
@@ -156,7 +167,7 @@ async function bootstrapApp() {
 async function loadHouseholds() {
   const { data, error } = await supabase
     .from("household_members")
-    .select("role, households(id, name, join_code)")
+    .select("role, households(id, name, join_code, mode)")
     .eq("user_id", currentUser.id);
 
   if (error) { console.error(error); return; }
@@ -165,6 +176,7 @@ async function loadHouseholds() {
     id: row.households.id,
     name: row.households.name,
     join_code: row.households.join_code,
+    mode: row.households.mode || "joint",
     role: row.role,
   }));
 
@@ -181,10 +193,70 @@ async function selectHousehold(id) {
   if (!currentHousehold) return;
   document.getElementById("household-select").value = id;
   document.getElementById("current-join-code").textContent = currentHousehold.join_code;
+  applyHouseholdModeUI();
+  await loadHouseholdMembers();
   await loadMonths();
   await loadShoppingList();
   await loadEvents();
 }
+
+// ---------------- MODO DE HOGAR (conjunto / separado) ----------------
+let currentHouseholdMembers = [];
+
+function applyHouseholdModeUI() {
+  const isSeparate = currentHousehold && currentHousehold.mode === "separate";
+  document.querySelectorAll(".separate-mode-only").forEach((el) => {
+    el.style.display = isSeparate ? "" : "none";
+  });
+  const fixedSel = document.getElementById("fixed-responsible");
+  const extraSel = document.getElementById("extra-responsible");
+  if (fixedSel) fixedSel.required = isSeparate;
+  if (extraSel) extraSel.required = isSeparate;
+}
+
+async function loadHouseholdMembers() {
+  const { data } = await supabase
+    .from("household_members")
+    .select("user_id, display_name")
+    .eq("household_id", currentHousehold.id);
+  currentHouseholdMembers = data || [];
+
+  const options = currentHouseholdMembers.map((m) => {
+    const label = m.display_name || (m.user_id === currentUser.id ? currentUser.email : "Integrante sin nombre");
+    return `<option value="${m.user_id}">${escapeHtml(label)}</option>`;
+  }).join("");
+
+  const fixedSel = document.getElementById("fixed-responsible");
+  const extraSel = document.getElementById("extra-responsible");
+  if (fixedSel) fixedSel.innerHTML = options;
+  if (extraSel) extraSel.innerHTML = options;
+
+  const myNameInput = document.getElementById("my-display-name");
+  if (myNameInput) {
+    const mine = currentHouseholdMembers.find((m) => m.user_id === currentUser.id);
+    myNameInput.value = (mine && mine.display_name) || "";
+  }
+}
+
+function memberLabel(userId) {
+  if (!userId) return "";
+  const m = currentHouseholdMembers.find((x) => x.user_id === userId);
+  if (!m) return "";
+  return m.display_name || (userId === currentUser.id ? currentUser.email : "Integrante");
+}
+
+document.getElementById("btn-save-display-name").addEventListener("click", async () => {
+  const name = document.getElementById("my-display-name").value.trim();
+  if (!name) return;
+  const { error } = await supabase
+    .from("household_members")
+    .update({ display_name: name })
+    .eq("household_id", currentHousehold.id)
+    .eq("user_id", currentUser.id);
+  if (error) { alert("Error guardando tu nombre: " + error.message); return; }
+  await loadHouseholdMembers();
+  alert("Nombre guardado.");
+});
 
 // ---------------- MODAL DE HOGARES ----------------
 function openHouseholdModal() { document.getElementById("household-modal").style.display = "flex"; }
@@ -195,21 +267,25 @@ document.getElementById("btn-close-household-modal").addEventListener("click", c
 
 document.getElementById("btn-create-household").addEventListener("click", async () => {
   const name = document.getElementById("new-household-name").value.trim();
+  const myName = document.getElementById("new-household-display-name").value.trim();
+  const mode = document.querySelector('input[name="new-household-mode"]:checked').value;
   if (!name) return;
   const joinCode = Math.random().toString(36).slice(2, 8).toUpperCase();
 
   const { data: hh, error } = await supabase
     .from("households")
-    .insert({ name, join_code: joinCode, created_by: currentUser.id })
+    .insert({ name, join_code: joinCode, created_by: currentUser.id, mode })
     .select()
     .single();
   if (error) { alert("Error creando hogar: " + error.message); return; }
 
   await supabase.from("household_members").insert({
     household_id: hh.id, user_id: currentUser.id, role: "owner",
+    display_name: myName || null,
   });
 
   document.getElementById("new-household-name").value = "";
+  document.getElementById("new-household-display-name").value = "";
   await loadHouseholds();
   await selectHousehold(hh.id);
   closeHouseholdModal();
@@ -217,6 +293,7 @@ document.getElementById("btn-create-household").addEventListener("click", async 
 
 document.getElementById("btn-join-household").addEventListener("click", async () => {
   const code = document.getElementById("join-code").value.trim().toUpperCase();
+  const myName = document.getElementById("join-display-name").value.trim();
   if (!code) return;
 
   const { data: hh, error } = await supabase
@@ -225,10 +302,11 @@ document.getElementById("btn-join-household").addEventListener("click", async ()
 
   const { error: joinError } = await supabase
     .from("household_members")
-    .insert({ household_id: hh.id, user_id: currentUser.id, role: "member" });
+    .insert({ household_id: hh.id, user_id: currentUser.id, role: "member", display_name: myName || null });
   if (joinError) { alert("Error al unirse: " + joinError.message); return; }
 
   document.getElementById("join-code").value = "";
+  document.getElementById("join-display-name").value = "";
   await loadHouseholds();
   await selectHousehold(hh.id);
   closeHouseholdModal();
@@ -437,9 +515,13 @@ document.getElementById("form-income").addEventListener("submit", async (e) => {
   const amount = parseFloat(document.getElementById("income-amount").value);
   if (!person || !amount) return;
 
+  const isSeparate = currentHousehold.mode === "separate";
+  const isShared = isSeparate ? document.getElementById("income-shared").checked : true;
+
   const { error } = await supabase.from("incomes").insert({
     household_id: currentHousehold.id, month_id: currentMonth.id,
     person_name: person, description: desc, amount,
+    owner_user_id: currentUser.id, is_shared: isShared,
   });
   if (error) { alert(error.message); return; }
   e.target.reset();
@@ -450,12 +532,20 @@ document.getElementById("form-income").addEventListener("submit", async (e) => {
 
 async function loadIncomes() {
   const { data } = await supabase.from("incomes").select("*").eq("month_id", currentMonth.id).order("created_at");
+  const isSeparate = currentHousehold.mode === "separate";
   const tbody = document.querySelector("#table-incomes tbody");
-  tbody.innerHTML = (data || []).map((r) => `
+  tbody.innerHTML = (data || []).map((r) => {
+    const isMine = r.owner_user_id === currentUser.id;
+    const visibilityCell = isSeparate
+      ? `<td><span class="visibility-badge ${r.is_shared ? "" : "private"}">${r.is_shared ? "Compartido" : (isMine ? "Privado (solo tú)" : "Privado")}</span></td>`
+      : "";
+    return `
     <tr>
       <td>${r.person_name}</td><td>${r.description || ""}</td><td>${fmt(r.amount)}</td>
+      ${visibilityCell}
       <td><button class="btn-danger" data-del-income="${r.id}">${icon("trash", 14)}</button></td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
   document.getElementById("total-incomes").textContent = fmt((data || []).reduce((s, r) => s + Number(r.amount), 0));
 
   tbody.querySelectorAll("[data-del-income]").forEach((btn) => {
@@ -476,8 +566,12 @@ document.getElementById("form-fixed").addEventListener("submit", async (e) => {
   const amount = parseFloat(document.getElementById("fixed-amount").value);
   if (!name || !amount) return;
 
+  const isSeparate = currentHousehold.mode === "separate";
+  const responsibleUserId = isSeparate ? document.getElementById("fixed-responsible").value : null;
+
   const { error } = await supabase.from("fixed_expenses").insert({
     household_id: currentHousehold.id, month_id: currentMonth.id, category, name, amount,
+    responsible_user_id: responsibleUserId,
   });
   if (error) { alert(error.message); return; }
   e.target.reset();
@@ -486,10 +580,12 @@ document.getElementById("form-fixed").addEventListener("submit", async (e) => {
 
 async function loadFixedExpenses() {
   const { data } = await supabase.from("fixed_expenses").select("*").eq("month_id", currentMonth.id).order("created_at");
+  const isSeparate = currentHousehold.mode === "separate";
   const tbody = document.querySelector("#table-fixed tbody");
   tbody.innerHTML = (data || []).map((r) => `
     <tr>
       <td>${capitalize(r.category)}</td><td>${r.name}</td><td>${fmt(r.amount)}</td>
+      ${isSeparate ? `<td>${escapeHtml(memberLabel(r.responsible_user_id)) || "-"}</td>` : ""}
       <td><button class="btn-danger" data-del-fixed="${r.id}">${icon("trash", 14)}</button></td>
     </tr>`).join("");
   document.getElementById("total-fixed").textContent = fmt((data || []).reduce((s, r) => s + Number(r.amount), 0));
@@ -511,7 +607,7 @@ document.getElementById("btn-copy-fixed").addEventListener("click", async () => 
   const prevMonth = ascending[idx - 1];
 
   const { data: prevFixed } = await supabase
-    .from("fixed_expenses").select("category, name, amount").eq("month_id", prevMonth.id);
+    .from("fixed_expenses").select("category, name, amount, responsible_user_id").eq("month_id", prevMonth.id);
   if (!prevFixed || prevFixed.length === 0) {
     alert(`${MONTH_NAMES[prevMonth.month - 1]} ${prevMonth.year} no tiene gastos fijos guardados.`);
     return;
@@ -523,7 +619,10 @@ document.getElementById("btn-copy-fixed").addEventListener("click", async () => 
 
   const toInsert = prevFixed
     .filter((r) => !existingNames.has(r.name.toLowerCase()))
-    .map((r) => ({ household_id: currentHousehold.id, month_id: currentMonth.id, category: r.category, name: r.name, amount: r.amount }));
+    .map((r) => ({
+      household_id: currentHousehold.id, month_id: currentMonth.id, category: r.category, name: r.name, amount: r.amount,
+      responsible_user_id: r.responsible_user_id || null,
+    }));
 
   if (toInsert.length === 0) {
     alert("Ya tienes todos esos gastos fijos cargados este mes.");
@@ -547,8 +646,12 @@ document.getElementById("form-extra").addEventListener("submit", async (e) => {
   const amount = parseFloat(document.getElementById("extra-amount").value);
   if (!name || !amount) return;
 
+  const isSeparate = currentHousehold.mode === "separate";
+  const responsibleUserId = isSeparate ? document.getElementById("extra-responsible").value : null;
+
   const { error } = await supabase.from("extra_expenses").insert({
     household_id: currentHousehold.id, month_id: currentMonth.id, name, expense_date: date, amount,
+    responsible_user_id: responsibleUserId,
   });
   if (error) { alert(error.message); return; }
   e.target.reset();
@@ -557,10 +660,12 @@ document.getElementById("form-extra").addEventListener("submit", async (e) => {
 
 async function loadExtraExpenses() {
   const { data } = await supabase.from("extra_expenses").select("*").eq("month_id", currentMonth.id).order("expense_date");
+  const isSeparate = currentHousehold.mode === "separate";
   const tbody = document.querySelector("#table-extra tbody");
   tbody.innerHTML = (data || []).map((r) => `
     <tr>
       <td>${r.name}</td><td>${r.expense_date || "-"}</td><td>${fmt(r.amount)}</td>
+      ${isSeparate ? `<td>${escapeHtml(memberLabel(r.responsible_user_id)) || "-"}</td>` : ""}
       <td><button class="btn-danger" data-del-extra="${r.id}">${icon("trash", 14)}</button></td>
     </tr>`).join("");
   document.getElementById("total-extra").textContent = fmt((data || []).reduce((s, r) => s + Number(r.amount), 0));
@@ -744,12 +849,13 @@ async function loadDashboard() {
   if (summary) {
     const ahorro = Number(summary.ahorro);
     document.getElementById("dashboard-cards").innerHTML = `
-      <div class="card"><div class="label">Ingresos</div><div class="value">${fmt(summary.total_ingresos)}</div></div>
-      <div class="card"><div class="label">Gastos Fijos</div><div class="value">${fmt(summary.total_gastos_fijos)}</div></div>
-      <div class="card"><div class="label">Gastos Extra</div><div class="value">${fmt(summary.total_gastos_extra)}</div></div>
-      <div class="card"><div class="label">Tarjeta de Crédito</div><div class="value">${fmt(summary.total_tarjeta)}</div></div>
-      <div class="card ${ahorro >= 0 ? "savings-positive" : "savings-negative"}"><div class="label">Ahorro del mes</div><div class="value">${fmt(ahorro)}</div></div>
+      <div class="card card-clickable" data-goto="ingresos"><div class="label">Ingresos</div><div class="value">${fmt(summary.total_ingresos)}</div></div>
+      <div class="card card-clickable" data-goto="fijos"><div class="label">Gastos Fijos</div><div class="value">${fmt(summary.total_gastos_fijos)}</div></div>
+      <div class="card card-clickable" data-goto="extra"><div class="label">Gastos Extra</div><div class="value">${fmt(summary.total_gastos_extra)}</div></div>
+      <div class="card card-clickable" data-goto="tarjeta"><div class="label">Tarjeta de Crédito</div><div class="value">${fmt(summary.total_tarjeta)}</div></div>
+      <div class="card card-clickable ${ahorro >= 0 ? "savings-positive" : "savings-negative"}" data-goto="historial"><div class="label">Ahorro del mes</div><div class="value">${fmt(ahorro)}</div></div>
     `;
+    bindCardNavigation("dashboard-cards");
   }
 
   // --- Acumulado histórico: suma de TODOS los meses hasta (e incluyendo) el seleccionado ---
@@ -763,10 +869,11 @@ async function loadDashboard() {
     cumAhorro += Number(summaries[i].ahorro);
   }
   document.getElementById("dashboard-cumulative-cards").innerHTML = `
-    <div class="card"><div class="label">Ingresos acumulados</div><div class="value">${fmt(cumIngresos)}</div></div>
-    <div class="card"><div class="label">Gastos acumulados</div><div class="value">${fmt(cumFijos + cumExtra + cumTarjeta)}</div></div>
-    <div class="card ${cumAhorro >= 0 ? "savings-positive" : "savings-negative"}"><div class="label">Ahorro acumulado</div><div class="value">${fmt(cumAhorro)}</div></div>
+    <div class="card card-clickable" data-goto="historial"><div class="label">Ingresos acumulados</div><div class="value">${fmt(cumIngresos)}</div></div>
+    <div class="card card-clickable" data-goto="historial"><div class="label">Gastos acumulados</div><div class="value">${fmt(cumFijos + cumExtra + cumTarjeta)}</div></div>
+    <div class="card card-clickable ${cumAhorro >= 0 ? "savings-positive" : "savings-negative"}" data-goto="historial"><div class="label">Ahorro acumulado</div><div class="value">${fmt(cumAhorro)}</div></div>
   `;
+  bindCardNavigation("dashboard-cumulative-cards");
 
   // --- Patrimonio consolidado: saldo real de tus cuentas este mes ---
   // (no se suma el ahorro acumulado por flujo: el saldo de las cuentas ya
@@ -776,11 +883,12 @@ async function loadDashboard() {
   const externalSavings = patrimonioRow ? Number(patrimonioRow.total_patrimonio) : 0;
 
   document.getElementById("dashboard-consolidated-card").innerHTML = `
-    <div class="card ${externalSavings >= 0 ? "savings-positive" : "savings-negative"}">
+    <div class="card card-clickable ${externalSavings >= 0 ? "savings-positive" : "savings-negative"}" data-goto="ahorros">
       <div class="label">Patrimonio consolidado (saldo de tus cuentas este mes)</div>
       <div class="value">${fmt(externalSavings)}</div>
     </div>
   `;
+  bindCardNavigation("dashboard-consolidated-card");
 
   // --- Gráfico: barras = ahorro de cada mes, línea = ahorro acumulado, línea = patrimonio ---
   const labels = summaries.map((s) => `${MONTH_NAMES[s.month - 1].slice(0, 3)} ${s.year}`);
@@ -1228,13 +1336,14 @@ async function loadCategoryBreakdown() {
   if (rankEl) {
     rankEl.innerHTML = sorted.length
       ? sorted.map(([cat, amt]) => `
-        <div class="category-row">
+        <div class="category-row card-clickable" data-goto="tarjeta">
           <div class="cat-name" style="color:${CATEGORY_COLORS[cat] || "#4f8cff"}">${icon(cat, 16)}</div>
           <div class="cat-name">${cat}</div>
           <div class="bar-wrap"><div class="bar" style="width:${maxVal ? (amt / maxVal) * 100 : 0}%; background:${CATEGORY_COLORS[cat] || "#4f8cff"}"></div></div>
           <div class="cat-amount">${fmt(amt)}</div>
         </div>`).join("")
       : `<p class="muted">Sin movimientos de tarjeta este mes.</p>`;
+    bindCardNavigation("dashboard-categories");
   }
 
   const canvas = document.getElementById("chart-cc-categories");
@@ -1818,6 +1927,38 @@ async function executeChatResponse(rawAnswer) {
 
   return reply;
 }
+
+// ============================================================
+// NAVEGACIÓN DESDE TARJETAS DEL DASHBOARD
+// ============================================================
+function goToTab(tabName) {
+  const btn = document.querySelector(`.sidebar .side-tab[data-tab="${tabName}"]`);
+  if (btn) btn.click();
+}
+function bindCardNavigation(containerId) {
+  document.querySelectorAll(`#${containerId} [data-goto]`).forEach((el) => {
+    el.addEventListener("click", () => goToTab(el.dataset.goto));
+  });
+}
+
+// ============================================================
+// TEMA CLARO / OSCURO
+// ============================================================
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  const btn = document.getElementById("theme-toggle");
+  if (btn) btn.innerHTML = icon(theme === "light" ? "moon" : "sun", 17);
+  try { localStorage.setItem("hogar-finanzas-theme", theme); } catch {}
+}
+(function initTheme() {
+  let saved = "dark";
+  try { saved = localStorage.getItem("hogar-finanzas-theme") || "dark"; } catch {}
+  applyTheme(saved);
+})();
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  const current = document.documentElement.getAttribute("data-theme") || "dark";
+  applyTheme(current === "light" ? "dark" : "light");
+});
 
 // ---------------- INIT ----------------
 initAuthTabs();
