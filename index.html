@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=16" />
+<link rel="stylesheet" href="css/style.css?v=17" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -190,10 +190,10 @@
         </label>
         <button type="submit" class="btn-primary">Agregar</button>
       </form>
-      <table class="data-table" id="table-incomes">
+      <div class="table-scroll"><table class="data-table" id="table-incomes">
         <thead><tr><th>Persona</th><th>Descripción</th><th>Monto</th><th class="separate-mode-only" style="display:none">Visibilidad</th><th></th></tr></thead>
         <tbody></tbody>
-      </table>
+      </table></div>
       <p class="total-row">Total ingresos: <strong id="total-incomes">$0</strong></p>
     </section>
 
@@ -215,10 +215,10 @@
         <select id="fixed-responsible" class="separate-mode-only" style="display:none"></select>
         <button type="submit" class="btn-primary">Agregar</button>
       </form>
-      <table class="data-table" id="table-fixed">
+      <div class="table-scroll"><table class="data-table" id="table-fixed">
         <thead><tr><th>Categoría</th><th>Nombre</th><th>Monto</th><th class="separate-mode-only" style="display:none">Responsable</th><th></th></tr></thead>
         <tbody></tbody>
-      </table>
+      </table></div>
       <p class="total-row">Total gastos fijos: <strong id="total-fixed">$0</strong></p>
     </section>
 
@@ -232,10 +232,10 @@
         <select id="extra-responsible" class="separate-mode-only" style="display:none"></select>
         <button type="submit" class="btn-primary">Agregar</button>
       </form>
-      <table class="data-table" id="table-extra">
+      <div class="table-scroll"><table class="data-table" id="table-extra">
         <thead><tr><th>Descripción</th><th>Fecha</th><th>Monto</th><th class="separate-mode-only" style="display:none">Responsable</th><th></th></tr></thead>
         <tbody></tbody>
-      </table>
+      </table></div>
       <p class="total-row">Total gastos extra: <strong id="total-extra">$0</strong></p>
     </section>
 
@@ -253,10 +253,10 @@
       <div id="pdf-preview" style="display:none">
         <h3>Revisa y ajusta antes de guardar</h3>
         <p class="muted">El desglose es automático y puede tener errores — edita los montos/descripciones si es necesario antes de confirmar.</p>
-        <table class="data-table" id="table-pdf-preview">
+        <div class="table-scroll"><table class="data-table" id="table-pdf-preview">
           <thead><tr><th>Fecha</th><th>Descripción</th><th>Cuotas</th><th>Monto</th><th>Categoría</th><th></th></tr></thead>
           <tbody></tbody>
-        </table>
+        </table></div>
         <div class="inline-form">
           <label>Total facturado: <input type="number" id="pdf-total" step="1" /></label>
           <button id="btn-confirm-pdf" class="btn-primary">Confirmar e importar</button>
@@ -264,10 +264,10 @@
       </div>
 
       <h3>Movimientos guardados de este mes</h3>
-      <table class="data-table" id="table-cc-transactions">
+      <div class="table-scroll"><table class="data-table" id="table-cc-transactions">
         <thead><tr><th>Fecha</th><th>Descripción</th><th>Cuotas</th><th>Monto</th><th>Categoría</th></tr></thead>
         <tbody></tbody>
-      </table>
+      </table></div>
       <p class="total-row">Total tarjeta (facturado): <strong id="total-cc">$0</strong></p>
 
       <h3 class="section-title">Gasto por categoría (este mes)</h3>
@@ -309,10 +309,10 @@
       </p>
 
       <h3 class="section-title">Saldos de este mes</h3>
-      <table class="data-table" id="table-accounts">
+      <div class="table-scroll"><table class="data-table" id="table-accounts">
         <thead><tr><th>Cuenta</th><th>Tipo</th><th>Tasa</th><th>Saldo este mes</th><th></th></tr></thead>
         <tbody></tbody>
-      </table>
+      </table></div>
       <p class="total-row">Patrimonio total este mes: <strong id="total-patrimonio">$0</strong></p>
 
       <div class="chart-box">
@@ -326,10 +326,10 @@
     <!-- HISTORIAL / REPORTES -->
     <section id="tab-historial" class="tab-panel">
       <h2>Historial de meses</h2>
-      <table class="data-table" id="table-history">
+      <div class="table-scroll"><table class="data-table" id="table-history">
         <thead><tr><th>Mes</th><th>Ingresos</th><th>Gastos Fijos</th><th>Gastos Extra</th><th>Tarjeta</th><th>Ahorro</th></tr></thead>
         <tbody></tbody>
-      </table>
+      </table></div>
 
       <h3 class="section-title">Reporte de promedios</h3>
       <div class="inline-form">
@@ -477,8 +477,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=16"></script>
-<script type="module" src="js/pdfParser.js?v=16"></script>
-<script type="module" src="js/app.js?v=16"></script>
+<script type="module" src="js/supabaseClient.js?v=17"></script>
+<script type="module" src="js/pdfParser.js?v=17"></script>
+<script type="module" src="js/app.js?v=17"></script>
 </body>
 </html>
