@@ -949,12 +949,19 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 
 /* ---------- FORMS & TABLES ---------- */
 .inline-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; align-items: center; }
-.data-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 10px;
+}
+.data-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
 .data-table th, .data-table td {
   text-align: left;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border-soft);
   font-size: 0.9em;
+  white-space: nowrap;
 }
 .data-table th {
   color: var(--muted);
