@@ -15,6 +15,30 @@
   --shadow: 0 4px 24px rgba(0,0,0,0.28);
 }
 
+[data-theme="light"] {
+  --bg: #f4f5f8;
+  --panel: #ffffff;
+  --panel-2: #eef0f4;
+  --border: #dfe2e8;
+  --border-soft: rgba(0,0,0,0.06);
+  --text: #1a1e28;
+  --muted: #667085;
+  --accent: #3568e0;
+  --accent-2: #6d4fd6;
+  --green: #059669;
+  --red: #dc2626;
+  --yellow: #b45309;
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+html { color-scheme: dark; }
+html[data-theme="light"] { color-scheme: light; }
+
+body, .card, .topbar, .sidebar, .modal-box, .drawer, .chat-popup {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
 * { box-sizing: border-box; }
 body {
   margin: 0;
@@ -242,6 +266,22 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   min-width: 74px;
   text-align: center;
 }
+
+.theme-toggle-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.theme-toggle-btn:hover { border-color: var(--accent); }
+.theme-toggle-btn svg { width: 17px; height: 17px; }
 
 .drawer-overlay {
   position: fixed;
@@ -476,6 +516,35 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   transition: transform 0.15s ease, border-color 0.15s ease;
 }
 .card:hover { transform: translateY(-2px); border-color: rgba(79,140,255,0.35); }
+.card-clickable, .category-row.card-clickable { cursor: pointer; }
+.card-clickable:active { transform: scale(0.98); }
+
+/* ---------- SELECTOR DE MODO DE HOGAR ---------- */
+.mode-choice-group { display: flex; gap: 10px; margin: 10px 0 14px; flex-wrap: wrap; }
+.mode-choice {
+  flex: 1 1 220px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--panel-2);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.mode-choice:has(input:checked) { border-color: var(--accent); background: rgba(79,140,255,0.1); }
+.mode-choice input { margin-bottom: 2px; }
+.mode-choice-title { font-weight: 700; }
+.mode-choice-desc { font-size: 0.8em; color: var(--muted); }
+.visibility-badge {
+  font-size: 0.72em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(124,92,255,0.15);
+  color: var(--accent-2);
+}
+.visibility-badge.private { background: rgba(248,113,113,0.12); color: var(--red); }
 .card .label { color: var(--muted); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.4px; }
 .card .value { font-size: 1.6em; font-weight: 700; margin-top: 8px; letter-spacing: -0.02em; }
 .card.savings-positive .value { color: var(--green); }
@@ -623,7 +692,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .calendar-day-events { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; overflow: hidden; }
 .calendar-event-chip {
   background: rgba(79,140,255,0.18);
-  color: #cfe0ff;
+  color: var(--accent);
   font-size: 0.62em;
   padding: 1px 4px;
   border-radius: 3px;
