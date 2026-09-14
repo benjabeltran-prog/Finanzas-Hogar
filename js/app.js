@@ -2124,6 +2124,8 @@ document.getElementById("form-task").addEventListener("submit", async (e) => {
     ({ error } = await supabase.from("household_tasks").update(payload).eq("id", id));
   } else {
     payload.created_by = currentUser.id;
+    const sortedCols = [...taskColumns].sort((a, b) => a.position - b.position);
+    payload.column_id = sortedCols.length ? sortedCols[0].id : null;
     ({ error } = await supabase.from("household_tasks").insert(payload));
   }
   if (error) { alert("Error guardando la tarea: " + error.message); return; }
@@ -2167,23 +2169,23 @@ async function toggleTaskComplete(task) {
   await loadTasks();
 }
 
-const TASK_STATUSES = ["todo", "in_progress", "done"];
+let taskColumns = []; // [{id, household_id, name, position}]
+let collapsedColumnIds = new Set();
 
-async function moveTask(taskId, direction) {
+async function moveTaskToColumn(taskId, columnId) {
   const task = allHouseholdTasks.find((t) => t.id === taskId);
   if (!task) return;
-  const idx = TASK_STATUSES.indexOf(task.status || "todo");
-  const newIdx = direction === "left" ? idx - 1 : idx + 1;
-  if (newIdx < 0 || newIdx >= TASK_STATUSES.length) return;
-  const newStatus = TASK_STATUSES[newIdx];
+
+  const sortedCols = [...taskColumns].sort((a, b) => a.position - b.position);
+  const isLastColumn = sortedCols.length > 0 && sortedCols[sortedCols.length - 1].id === columnId;
 
   await supabase.from("household_tasks").update({
-    status: newStatus,
-    is_completed: newStatus === "done",
-    completed_at: newStatus === "done" ? new Date().toISOString() : null,
+    column_id: columnId,
+    is_completed: isLastColumn,
+    completed_at: isLastColumn ? new Date().toISOString() : null,
   }).eq("id", taskId);
 
-  if (newStatus === "done" && task.recurrence !== "none") {
+  if (isLastColumn && !task.is_completed && task.recurrence !== "none") {
     const nextDate = computeNextDueDate(task.due_date, task.recurrence);
     await supabase.from("household_tasks").insert({
       household_id: currentHousehold.id,
@@ -2193,11 +2195,18 @@ async function moveTask(taskId, direction) {
       due_date: nextDate,
       priority: task.priority,
       recurrence: task.recurrence,
-      status: "todo",
+      column_id: sortedCols[0].id,
       created_by: currentUser.id,
     });
   }
   await loadTasks();
+}
+
+async function toggleTaskComplete(task) {
+  const sortedCols = [...taskColumns].sort((a, b) => a.position - b.position);
+  if (sortedCols.length === 0) return;
+  const targetColumn = task.is_completed ? sortedCols[0].id : sortedCols[sortedCols.length - 1].id;
+  await moveTaskToColumn(task.id, targetColumn);
 }
 
 async function deleteTask(id) {
@@ -2211,7 +2220,7 @@ function todayStr() {
 }
 
 function taskMetaHtml(task) {
-  const isOverdue = task.due_date && task.status !== "done" && task.due_date < todayStr();
+  const isOverdue = task.due_date && !task.is_completed && task.due_date < todayStr();
   const personName = task.assigned_to ? (memberLabel(task.assigned_to) || "Integrante") : "Sin asignar";
   const priorityLabel = { alta: "Alta", media: "Media", baja: "Baja" }[task.priority] || task.priority;
   return `
@@ -2224,7 +2233,7 @@ function taskMetaHtml(task) {
     </div>`;
 }
 
-// Tarjeta para "Hoy" — con checkbox de completado rápido (salta directo a Lista)
+// Tarjeta para "Hoy" — con checkbox de completado rápido (salta directo a la última columna)
 function renderTaskCard(task) {
   return `
     <div class="task-card priority-${task.priority} ${task.is_completed ? "completed" : ""}">
@@ -2240,18 +2249,13 @@ function renderTaskCard(task) {
     </div>`;
 }
 
-// Tarjeta del tablero kanban — con flechas para mover entre columnas
+// Tarjeta del tablero kanban — se arrastra entre columnas
 function renderKanbanCard(task) {
-  const status = task.status || "todo";
-  const canMoveLeft = status !== "todo";
-  const canMoveRight = status !== "done";
   return `
-    <div class="kanban-card priority-${task.priority} ${status === "done" ? "completed" : ""}">
+    <div class="kanban-card priority-${task.priority} ${task.is_completed ? "completed" : ""}" data-task-id="${task.id}">
       <div class="task-title">${escapeHtml(task.title)}</div>
       ${taskMetaHtml(task)}
       <div class="task-actions">
-        ${canMoveLeft ? `<button type="button" class="task-move-btn" data-move-task="${task.id}" data-move-dir="left" title="Retroceder">‹</button>` : ""}
-        ${canMoveRight ? `<button type="button" class="task-move-btn" data-move-task="${task.id}" data-move-dir="right" title="Avanzar">›</button>` : ""}
         <button type="button" class="btn-ghost" data-edit-task="${task.id}">${icon("edit", 14)}</button>
         <button type="button" class="btn-danger" data-del-task="${task.id}">${icon("trash", 14)}</button>
       </div>
@@ -2264,9 +2268,6 @@ function attachTaskCardHandlers(container) {
       const task = allHouseholdTasks.find((t) => t.id === cb.dataset.toggleTask);
       if (task) toggleTaskComplete(task);
     });
-  });
-  container.querySelectorAll("[data-move-task]").forEach((btn) => {
-    btn.addEventListener("click", () => moveTask(btn.dataset.moveTask, btn.dataset.moveDir));
   });
   container.querySelectorAll("[data-edit-task]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -2300,6 +2301,42 @@ function sortTasks(tasks) {
   });
 }
 
+async function ensureDefaultColumns() {
+  const { data } = await supabase
+    .from("task_columns").select("*").eq("household_id", currentHousehold.id).order("position");
+  if (data && data.length) { taskColumns = data; return; }
+
+  const defaults = [
+    { household_id: currentHousehold.id, name: "To Do", position: 0 },
+    { household_id: currentHousehold.id, name: "En Progreso", position: 1 },
+    { household_id: currentHousehold.id, name: "Lista", position: 2 },
+  ];
+  const { data: created } = await supabase.from("task_columns").insert(defaults).select();
+  taskColumns = created || [];
+}
+
+document.getElementById("btn-add-column").addEventListener("click", async () => {
+  const input = document.getElementById("new-column-name");
+  const name = input.value.trim();
+  if (!name) return;
+  const maxPos = taskColumns.length ? Math.max(...taskColumns.map((c) => c.position)) : -1;
+  const { error } = await supabase.from("task_columns").insert({
+    household_id: currentHousehold.id, name, position: maxPos + 1,
+  });
+  if (error) { alert("Error agregando columna: " + error.message); return; }
+  input.value = "";
+  await loadTasks();
+});
+
+async function deleteColumn(columnId) {
+  const hasTasksHere = allHouseholdTasks.some((t) => t.column_id === columnId);
+  if (hasTasksHere) { alert("Esta columna tiene tareas — muévelas o bórralas antes de eliminarla."); return; }
+  if (taskColumns.length <= 1) { alert("Debe quedar al menos una columna."); return; }
+  if (!confirm("¿Eliminar esta columna?")) return;
+  await supabase.from("task_columns").delete().eq("id", columnId);
+  await loadTasks();
+}
+
 function renderKanbanBoard() {
   const personFilter = document.getElementById("task-filter-person").value;
   const priorityFilter = document.getElementById("task-filter-priority").value;
@@ -2308,28 +2345,65 @@ function renderKanbanBoard() {
   if (personFilter) filtered = filtered.filter((t) => t.assigned_to === personFilter);
   if (priorityFilter) filtered = filtered.filter((t) => t.priority === priorityFilter);
 
-  TASK_STATUSES.forEach((status) => {
-    const columnTasks = sortTasks(filtered.filter((t) => (t.status || "todo") === status));
-    const container = document.getElementById(`kanban-cards-${status}`);
-    container.innerHTML = columnTasks.length
-      ? columnTasks.map(renderKanbanCard).join("")
-      : `<p class="muted kanban-empty">Sin tareas</p>`;
-    document.getElementById(`kanban-count-${status}`).textContent = columnTasks.length;
-    attachTaskCardHandlers(container);
+  const board = document.getElementById("kanban-board");
+  const sortedCols = [...taskColumns].sort((a, b) => a.position - b.position);
+
+  board.innerHTML = sortedCols.map((col) => {
+    const columnTasks = sortTasks(filtered.filter((t) => t.column_id === col.id));
+    const isCollapsed = collapsedColumnIds.has(col.id);
+    return `
+      <div class="kanban-column ${isCollapsed ? "collapsed" : ""}" data-column-id="${col.id}">
+        <div class="kanban-column-header" data-toggle-column="${col.id}">
+          <span>${escapeHtml(col.name)}</span>
+          <span class="kanban-count">${columnTasks.length}</span>
+          <span class="kanban-toggle-icon">▾</span>
+          <button type="button" class="kanban-column-delete" data-delete-column="${col.id}" title="Eliminar columna">✕</button>
+        </div>
+        <div class="kanban-cards" data-column-id="${col.id}" style="${isCollapsed ? "display:none" : ""}">
+          ${columnTasks.length ? columnTasks.map(renderKanbanCard).join("") : `<p class="muted kanban-empty">Sin tareas</p>`}
+        </div>
+      </div>`;
+  }).join("");
+
+  attachTaskCardHandlers(board);
+
+  board.querySelectorAll("[data-toggle-column]").forEach((header) => {
+    header.addEventListener("click", (e) => {
+      if (e.target.closest("[data-delete-column]")) return; // no colapsar al tocar la X
+      const colId = header.dataset.toggleColumn;
+      if (collapsedColumnIds.has(colId)) collapsedColumnIds.delete(colId);
+      else collapsedColumnIds.add(colId);
+      renderKanbanBoard();
+    });
+  });
+  board.querySelectorAll("[data-delete-column]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteColumn(btn.dataset.deleteColumn);
+    });
+  });
+
+  board.querySelectorAll(".kanban-cards").forEach((container) => {
+    new Sortable(container, {
+      group: "kanban-tasks",
+      animation: 150,
+      ghostClass: "sortable-ghost",
+      dragClass: "sortable-drag",
+      onEnd: (evt) => {
+        const taskId = evt.item.dataset.taskId;
+        const newColumnId = evt.to.dataset.columnId;
+        if (taskId && newColumnId) moveTaskToColumn(taskId, newColumnId);
+      },
+    });
   });
 }
 
 document.getElementById("task-filter-person").addEventListener("change", renderKanbanBoard);
 document.getElementById("task-filter-priority").addEventListener("change", renderKanbanBoard);
 
-document.getElementById("kanban-done-toggle").addEventListener("click", () => {
-  const column = document.getElementById("kanban-column-done");
-  const cards = document.getElementById("kanban-cards-done");
-  const isCollapsed = column.classList.toggle("collapsed");
-  cards.style.display = isCollapsed ? "none" : "flex";
-});
-
 async function loadTasks() {
+  await ensureDefaultColumns();
+
   const { data } = await supabase
     .from("household_tasks").select("*").eq("household_id", currentHousehold.id)
     .order("due_date", { ascending: true });
