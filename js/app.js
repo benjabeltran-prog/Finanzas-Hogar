@@ -1628,16 +1628,17 @@ document.getElementById("form-event").addEventListener("submit", async (e) => {
   e.preventDefault();
   const title = document.getElementById("event-title").value.trim();
   const description = document.getElementById("event-description").value.trim();
-  const startRaw = document.getElementById("event-start").value;
-  const endRaw = document.getElementById("event-end").value;
-  if (!title || !startRaw) return;
+  const date = document.getElementById("event-date").value;
+  const startTime = document.getElementById("event-start-time").value;
+  const endTime = document.getElementById("event-end-time").value;
+  if (!title || !date || !startTime) return;
 
   const { error } = await supabase.from("household_events").insert({
     household_id: currentHousehold.id,
     title,
     description: description || null,
-    start_at: new Date(startRaw).toISOString(),
-    end_at: endRaw ? new Date(endRaw).toISOString() : null,
+    start_at: new Date(`${date}T${startTime}`).toISOString(),
+    end_at: endTime ? new Date(`${date}T${endTime}`).toISOString() : null,
     created_by: currentUser.id,
     created_by_email: currentUser.email,
   });
@@ -1646,10 +1647,15 @@ document.getElementById("form-event").addEventListener("submit", async (e) => {
   await loadEvents();
 });
 
-function formatEventDateTime(iso) {
+function formatEventDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleString("es-CL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" });
+}
+function formatEventTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
 }
 
 function googleCalendarLink(ev) {
@@ -1683,11 +1689,14 @@ async function loadEvents() {
 }
 
 function renderEventCard(ev) {
+  const timeRange = ev.end_at
+    ? `${formatEventTime(ev.start_at)} – ${formatEventTime(ev.end_at)}`
+    : formatEventTime(ev.start_at);
   return `
     <div class="event-card">
       <div class="event-info">
+        <div class="event-time">${formatEventDate(ev.start_at)} · ${timeRange}</div>
         <div class="event-title">${escapeHtml(ev.title)}</div>
-        <div class="event-time">${formatEventDateTime(ev.start_at)}${ev.end_at ? " – " + formatEventDateTime(ev.end_at) : ""}</div>
         ${ev.description ? `<div class="event-desc">${escapeHtml(ev.description)}</div>` : ""}
         ${ev.created_by_email ? `<div class="event-desc">Agregado por ${escapeHtml(ev.created_by_email)}</div>` : ""}
       </div>
