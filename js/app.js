@@ -55,6 +55,20 @@ document.querySelectorAll(".side-tab[data-icon]").forEach((btn) => {
 });
 const fmt = (n) => "$" + Math.round(n || 0).toLocaleString("es-CL");
 
+function showToast(message, type = "error") {
+  const container = document.getElementById("toast-container");
+  if (!container) { console.log(message); return; }
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("show"));
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 250);
+  }, 4000);
+}
+
 // ============================================================
 // AUTH
 // ============================================================
@@ -96,6 +110,67 @@ document.getElementById("btn-logout").addEventListener("click", async () => {
   await supabase.auth.signOut();
 });
 
+// ---------------- RECUPERAR CONTRASEÑA ----------------
+document.getElementById("btn-forgot-password").addEventListener("click", () => {
+  document.querySelector(".tabs-inline").style.display = "none";
+  document.getElementById("login-form").style.display = "none";
+  document.getElementById("signup-form").style.display = "none";
+  document.getElementById("forgot-form").style.display = "flex";
+  document.getElementById("btn-forgot-password").style.display = "none";
+  document.getElementById("btn-back-to-login").style.display = "block";
+  document.getElementById("auth-message").textContent = "";
+});
+
+document.getElementById("btn-back-to-login").addEventListener("click", () => {
+  document.querySelector(".tabs-inline").style.display = "flex";
+  document.getElementById("login-form").style.display = "flex";
+  document.getElementById("forgot-form").style.display = "none";
+  document.getElementById("reset-password-form").style.display = "none";
+  document.getElementById("btn-forgot-password").style.display = "block";
+  document.getElementById("btn-back-to-login").style.display = "none";
+  document.getElementById("auth-message").textContent = "";
+});
+
+document.getElementById("forgot-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("forgot-email").value;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname,
+  });
+  const msg = document.getElementById("auth-message");
+  if (error) {
+    msg.style.color = "var(--red)";
+    msg.textContent = error.message;
+  } else {
+    msg.style.color = "var(--green)";
+    msg.textContent = "Listo, revisa tu correo — te mandamos un link para crear una contraseña nueva.";
+  }
+});
+
+document.getElementById("reset-password-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const newPassword = document.getElementById("reset-password-new").value;
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  const msg = document.getElementById("auth-message");
+  if (error) {
+    msg.style.color = "var(--red)";
+    msg.textContent = error.message;
+  } else {
+    msg.style.color = "var(--green)";
+    msg.textContent = "Contraseña actualizada. Ya puedes usar la app con normalidad.";
+    document.getElementById("reset-password-form").style.display = "none";
+  }
+});
+
+// Si el link de recuperación de correo nos trae aquí, mostramos solo el
+// formulario de "nueva contraseña" en vez del login normal.
+if (window.location.hash.includes("type=recovery")) {
+  document.querySelector(".tabs-inline").style.display = "none";
+  document.getElementById("login-form").style.display = "none";
+  document.getElementById("btn-forgot-password").style.display = "none";
+  document.getElementById("reset-password-form").style.display = "flex";
+}
+
 let appBootstrapped = false;
 
 supabase.auth.onAuthStateChange((_event, session) => {
@@ -110,6 +185,7 @@ supabase.auth.onAuthStateChange((_event, session) => {
     if (!appBootstrapped || isNewLogin) {
       appBootstrapped = true;
       bootstrapApp();
+      maybeShowOnboarding();
     }
   } else {
     currentUser = null;
@@ -258,13 +334,47 @@ document.getElementById("btn-save-display-name").addEventListener("click", async
     .update({ display_name: name })
     .eq("household_id", currentHousehold.id)
     .eq("user_id", currentUser.id);
-  if (error) { alert("Error guardando tu nombre: " + error.message); return; }
+  if (error) { showToast("Error guardando tu nombre: " + error.message); return; }
   await loadHouseholdMembers();
-  alert("Nombre guardado.");
+  showToast("Nombre guardado.", "success");
 });
 
 // ---------------- MODAL DE HOGARES ----------------
-function openHouseholdModal() { document.getElementById("household-modal").style.display = "flex"; }
+function openHouseholdModal() {
+  document.getElementById("household-modal").style.display = "flex";
+  loadActivityLog();
+}
+
+async function logActivity(action) {
+  if (!currentHousehold || !currentUser) return;
+  await supabase.from("activity_log").insert({
+    household_id: currentHousehold.id,
+    user_email: currentUser.email,
+    action,
+  });
+}
+
+function timeAgo(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "recién";
+  if (mins < 60) return `hace ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `hace ${days} d`;
+}
+
+async function loadActivityLog() {
+  const el = document.getElementById("activity-log-list");
+  if (!el || !currentHousehold) return;
+  const { data } = await supabase
+    .from("activity_log").select("*").eq("household_id", currentHousehold.id)
+    .order("created_at", { ascending: false }).limit(20);
+  el.innerHTML = (data && data.length)
+    ? data.map((a) => `<div class="activity-log-item"><strong>${escapeHtml(a.user_email || "Alguien")}</strong> ${escapeHtml(a.action)} · ${timeAgo(a.created_at)}</div>`).join("")
+    : `<p class="muted">Sin actividad registrada todavía.</p>`;
+}
 function closeHouseholdModal() { document.getElementById("household-modal").style.display = "none"; }
 
 document.getElementById("btn-household-manage").addEventListener("click", openHouseholdModal);
@@ -282,7 +392,7 @@ document.getElementById("btn-create-household").addEventListener("click", async 
     .insert({ name, join_code: joinCode, created_by: currentUser.id, mode })
     .select()
     .single();
-  if (error) { alert("Error creando hogar: " + error.message); return; }
+  if (error) { showToast("Error creando hogar: " + error.message); return; }
 
   await supabase.from("household_members").insert({
     household_id: hh.id, user_id: currentUser.id, role: "owner",
@@ -303,12 +413,12 @@ document.getElementById("btn-join-household").addEventListener("click", async ()
 
   const { data: hh, error } = await supabase
     .from("households").select("id, name").eq("join_code", code).single();
-  if (error || !hh) { alert("Código no encontrado."); return; }
+  if (error || !hh) { showToast("Código no encontrado."); return; }
 
   const { error: joinError } = await supabase
     .from("household_members")
     .insert({ household_id: hh.id, user_id: currentUser.id, role: "member", display_name: myName || null });
-  if (joinError) { alert("Error al unirse: " + joinError.message); return; }
+  if (joinError) { showToast("Error al unirse: " + joinError.message); return; }
 
   document.getElementById("join-code").value = "";
   document.getElementById("join-display-name").value = "";
@@ -357,7 +467,7 @@ document.getElementById("btn-new-month").addEventListener("click", async () => {
   const input = prompt("Nuevo mes (formato AAAA-MM):", `${year}-${String(month).padStart(2, "0")}`);
   if (!input) return;
   const [y, m] = input.split("-").map(Number);
-  if (!y || !m || m < 1 || m > 12) { alert("Formato inválido."); return; }
+  if (!y || !m || m < 1 || m > 12) { showToast("Formato inválido."); return; }
   await createMonth(y, m);
 });
 
@@ -370,7 +480,7 @@ document.getElementById("btn-delete-month").addEventListener("click", async () =
   if (!confirmed) return;
 
   const { error } = await supabase.from("months").delete().eq("id", currentMonth.id);
-  if (error) { alert("Error eliminando el mes: " + error.message); return; }
+  if (error) { showToast("Error eliminando el mes: " + error.message); return; }
 
   currentMonth = null;
   await loadMonths();
@@ -383,8 +493,8 @@ async function createMonth(year, month) {
     .select()
     .single();
   if (error) {
-    if (error.code === "23505") { alert("Ese mes ya existe."); }
-    else { alert("Error creando mes: " + error.message); }
+    if (error.code === "23505") { showToast("Ese mes ya existe."); }
+    else { showToast("Error creando mes: " + error.message); }
     await loadMonths();
     return;
   }
@@ -528,11 +638,12 @@ document.getElementById("form-income").addEventListener("submit", async (e) => {
     person_name: person, description: desc, amount,
     owner_user_id: currentUser.id, is_shared: isShared,
   });
-  if (error) { alert(error.message); return; }
+  if (error) { showToast(error.message); return; }
   e.target.reset();
   await loadIncomes();
   await loadDashboard();
   await loadHistory();
+  logActivity(`agregó un ingreso de ${fmt(amount)} (${person})`);
 });
 
 async function loadIncomes() {
@@ -578,9 +689,10 @@ document.getElementById("form-fixed").addEventListener("submit", async (e) => {
     household_id: currentHousehold.id, month_id: currentMonth.id, category, name, amount,
     responsible_user_id: responsibleUserId,
   });
-  if (error) { alert(error.message); return; }
+  if (error) { showToast(error.message); return; }
   e.target.reset();
   await loadFixedExpenses(); await loadDashboard(); await loadHistory();
+  logActivity(`agregó un gasto fijo de ${fmt(amount)} (${name})`);
 });
 
 async function loadFixedExpenses() {
@@ -608,13 +720,13 @@ function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; 
 document.getElementById("btn-copy-fixed").addEventListener("click", async () => {
   const ascending = ascendingMonths();
   const idx = ascending.findIndex((m) => m.id === currentMonth.id);
-  if (idx <= 0) { alert("No hay un mes anterior a este para copiar."); return; }
+  if (idx <= 0) { showToast("No hay un mes anterior a este para copiar."); return; }
   const prevMonth = ascending[idx - 1];
 
   const { data: prevFixed } = await supabase
     .from("fixed_expenses").select("category, name, amount, responsible_user_id").eq("month_id", prevMonth.id);
   if (!prevFixed || prevFixed.length === 0) {
-    alert(`${MONTH_NAMES[prevMonth.month - 1]} ${prevMonth.year} no tiene gastos fijos guardados.`);
+    showToast(`${MONTH_NAMES[prevMonth.month - 1]} ${prevMonth.year} no tiene gastos fijos guardados.`);
     return;
   }
 
@@ -630,15 +742,15 @@ document.getElementById("btn-copy-fixed").addEventListener("click", async () => 
     }));
 
   if (toInsert.length === 0) {
-    alert("Ya tienes todos esos gastos fijos cargados este mes.");
+    showToast("Ya tienes todos esos gastos fijos cargados este mes.");
     return;
   }
 
   const { error } = await supabase.from("fixed_expenses").insert(toInsert);
-  if (error) { alert("Error copiando gastos fijos: " + error.message); return; }
+  if (error) { showToast("Error copiando gastos fijos: " + error.message); return; }
 
   await loadFixedExpenses(); await loadDashboard(); await loadHistory();
-  alert(`Se copiaron ${toInsert.length} gasto(s) fijo(s) de ${MONTH_NAMES[prevMonth.month - 1]} ${prevMonth.year}.`);
+  showToast(`Se copiaron ${toInsert.length} gasto(s) fijo(s) de ${MONTH_NAMES[prevMonth.month - 1]} ${prevMonth.year}.`, "success");
 });
 
 // ============================================================
@@ -658,9 +770,10 @@ document.getElementById("form-extra").addEventListener("submit", async (e) => {
     household_id: currentHousehold.id, month_id: currentMonth.id, name, expense_date: date, amount,
     responsible_user_id: responsibleUserId,
   });
-  if (error) { alert(error.message); return; }
+  if (error) { showToast(error.message); return; }
   e.target.reset();
   await loadExtraExpenses(); await loadDashboard(); await loadHistory();
+  logActivity(`agregó un gasto extra de ${fmt(amount)} (${name})`);
 });
 
 async function loadExtraExpenses() {
@@ -765,7 +878,7 @@ document.getElementById("btn-confirm-pdf").addEventListener("click", async () =>
     .from("credit_card_statements")
     .insert({ household_id: currentHousehold.id, month_id: currentMonth.id, total_billed: total, bank: "Santander" })
     .select().single();
-  if (stError) { alert("Error guardando cartola: " + stError.message); return; }
+  if (stError) { showToast("Error guardando cartola: " + stError.message); return; }
 
   if (pendingParsedTransactions.length > 0) {
     const rows = pendingParsedTransactions.map((t) => ({
@@ -778,7 +891,7 @@ document.getElementById("btn-confirm-pdf").addEventListener("click", async () =>
       category: t.category,
     }));
     const { error: txError } = await supabase.from("credit_card_transactions").insert(rows);
-    if (txError) { alert("Cartola guardada, pero hubo error con los movimientos: " + txError.message); }
+    if (txError) { showToast("Cartola guardada, pero hubo error con los movimientos: " + txError.message); }
   }
 
   pendingParsedTransactions = [];
@@ -1106,6 +1219,31 @@ async function loadDashboardOverview() {
     alerts.push({ type: "danger", text: `El ahorro de este mes está en negativo (${fmt(currentSummaryRow.ahorro)}).`, goto: "historial" });
   }
 
+  const { data: budgetRows } = await supabase
+    .from("category_budgets").select("*").eq("household_id", currentHousehold.id);
+  if (budgetRows && budgetRows.length) {
+    const { data: statements } = await supabase
+      .from("credit_card_statements").select("id").eq("month_id", currentMonth.id);
+    const statementIds = (statements || []).map((s) => s.id);
+    if (statementIds.length) {
+      const { data: txs } = await supabase
+        .from("credit_card_transactions").select("category, amount").in("statement_id", statementIds);
+      const spentByCat = {};
+      (txs || []).forEach((t) => {
+        const cat = t.category || "Sin categoría";
+        spentByCat[cat] = (spentByCat[cat] || 0) + Number(t.amount);
+      });
+      const overBudget = budgetRows.filter((b) => (spentByCat[b.category] || 0) > Number(b.monthly_limit));
+      if (overBudget.length) {
+        alerts.push({
+          type: "warning",
+          text: `Te pasaste del presupuesto en ${overBudget.length === 1 ? overBudget[0].category : overBudget.length + " categorías"}.`,
+          goto: "tarjeta",
+        });
+      }
+    }
+  }
+
   const alertsEl = document.getElementById("dashboard-alerts");
   alertsEl.innerHTML = alerts.length
     ? alerts.map((a) => `<div class="dashboard-alert ${a.type}" data-goto="${a.goto}">⚠ ${a.text}</div>`).join("")
@@ -1152,12 +1290,56 @@ async function loadHistory() {
   document.getElementById("report-cards").style.display = "none";
 }
 
+document.getElementById("btn-export-excel").addEventListener("click", async () => {
+  const { data: summaries } = await supabase
+    .from("v_month_summary").select("*").eq("household_id", currentHousehold.id)
+    .order("year").order("month");
+  if (!summaries || !summaries.length) { showToast("No hay datos para exportar."); return; }
+
+  const rows = summaries.map((s) => ({
+    Mes: `${MONTH_NAMES[s.month - 1]} ${s.year}`,
+    Ingresos: Number(s.total_ingresos),
+    "Gastos Fijos": Number(s.total_gastos_fijos),
+    "Gastos Extra": Number(s.total_gastos_extra),
+    Tarjeta: Number(s.total_tarjeta),
+    Ahorro: Number(s.ahorro),
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Historial");
+  XLSX.writeFile(wb, `historial-${currentHousehold.name}.xlsx`);
+  logActivity("exportó el historial a Excel");
+});
+
+document.getElementById("btn-export-pdf").addEventListener("click", async () => {
+  const { data: summaries } = await supabase
+    .from("v_month_summary").select("*").eq("household_id", currentHousehold.id)
+    .order("year").order("month");
+  if (!summaries || !summaries.length) { showToast("No hay datos para exportar."); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.text(`Historial financiero — ${currentHousehold.name}`, 14, 16);
+
+  const head = [["Mes", "Ingresos", "Gastos Fijos", "Gastos Extra", "Tarjeta", "Ahorro"]];
+  const body = summaries.map((s) => [
+    `${MONTH_NAMES[s.month - 1]} ${s.year}`,
+    fmt(s.total_ingresos), fmt(s.total_gastos_fijos), fmt(s.total_gastos_extra), fmt(s.total_tarjeta), fmt(s.ahorro),
+  ]);
+
+  doc.autoTable({ head, body, startY: 24, styles: { fontSize: 9 } });
+  doc.save(`historial-${currentHousehold.name}.pdf`);
+  logActivity("exportó el historial a PDF");
+});
+
 document.getElementById("btn-generate-report").addEventListener("click", async () => {
   const { data: summaries } = await supabase
     .from("v_month_summary").select("*").eq("household_id", currentHousehold.id);
 
   if (!summaries || summaries.length === 0) {
-    alert("Todavía no hay meses con datos para calcular un promedio.");
+    showToast("Todavía no hay meses con datos para calcular un promedio.");
     return;
   }
 
@@ -1214,7 +1396,7 @@ document.getElementById("form-account").addEventListener("submit", async (e) => 
     initial_balance = parseFloat(document.getElementById("account-initial-balance").value);
     initial_month_id = document.getElementById("account-initial-month").value;
     if (isNaN(initial_balance) || !initial_month_id) {
-      alert("Completa el saldo inicial y el mes inicial para una cuenta vinculada.");
+      showToast("Completa el saldo inicial y el mes inicial para una cuenta vinculada.");
       return;
     }
   }
@@ -1223,7 +1405,7 @@ document.getElementById("form-account").addEventListener("submit", async (e) => 
     household_id: currentHousehold.id, name, account_type, interest_rate,
     auto_track: autoTrack, initial_balance, initial_month_id,
   });
-  if (error) { alert("Error agregando cuenta: " + error.message); return; }
+  if (error) { showToast("Error agregando cuenta: " + error.message); return; }
   e.target.reset();
   document.getElementById("auto-track-fields").style.display = "none";
   document.getElementById("auto-track-hint").style.display = "none";
@@ -1308,12 +1490,12 @@ async function loadAccounts() {
       const accountId = btn.dataset.saveBalance;
       const input = tbody.querySelector(`.balance-input[data-account-id="${accountId}"]`);
       const balance = parseFloat(input.value);
-      if (isNaN(balance)) { alert("Ingresa un saldo válido."); return; }
+      if (isNaN(balance)) { showToast("Ingresa un saldo válido."); return; }
       const { error } = await supabase.from("account_balances").upsert(
         { household_id: currentHousehold.id, account_id: accountId, month_id: currentMonth.id, balance, updated_at: new Date().toISOString() },
         { onConflict: "account_id,month_id" }
       );
-      if (error) { alert("Error guardando saldo: " + error.message); return; }
+      if (error) { showToast("Error guardando saldo: " + error.message); return; }
       await loadAccounts();
       await loadPatrimonioChart();
     });
@@ -1473,6 +1655,63 @@ async function loadCategoryBreakdown() {
       });
     }
   }
+
+  await loadBudgets(totals);
+}
+
+// ============================================================
+// PRESUPUESTOS POR CATEGORÍA
+// ============================================================
+async function loadBudgets(categoryTotals) {
+  const el = document.getElementById("budgets-list");
+  if (!el) return;
+
+  const { data: budgets } = await supabase
+    .from("category_budgets").select("*").eq("household_id", currentHousehold.id);
+  const budgetByCategory = {};
+  (budgets || []).forEach((b) => { budgetByCategory[b.category] = b; });
+
+  const allCategories = Object.keys(CATEGORY_COLORS).filter((c) => c !== "Sin categoría");
+
+  el.innerHTML = allCategories.map((cat) => {
+    const spent = categoryTotals[cat] || 0;
+    const budget = budgetByCategory[cat];
+    const limit = budget ? Number(budget.monthly_limit) : null;
+    const pct = limit ? Math.min(100, (spent / limit) * 100) : 0;
+    const isOver = limit && spent > limit;
+    const isWarn = limit && !isOver && pct >= 80;
+
+    return `
+      <div class="budget-row">
+        <div class="budget-row-top">
+          <span class="budget-category">${icon(cat, 14)} ${cat}</span>
+          <input type="number" class="budget-limit-input" data-budget-category="${cat}"
+            value="${limit != null ? limit : ""}" placeholder="Sin límite" step="1" />
+        </div>
+        ${limit ? `
+          <div class="budget-bar-wrap"><div class="budget-bar ${isOver ? "over" : isWarn ? "warn" : ""}" style="width:${pct}%"></div></div>
+          <div class="budget-status ${isOver ? "over" : ""}">${fmt(spent)} de ${fmt(limit)} (${Math.round((spent / limit) * 100)}%)${isOver ? " — ¡superado!" : ""}</div>
+        ` : `<div class="budget-status">Gastado este mes: ${fmt(spent)} — sin límite definido</div>`}
+      </div>`;
+  }).join("");
+
+  el.querySelectorAll("[data-budget-category]").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const category = input.dataset.budgetCategory;
+      const value = input.value ? Number(input.value) : null;
+
+      if (value === null) {
+        await supabase.from("category_budgets").delete()
+          .eq("household_id", currentHousehold.id).eq("category", category);
+      } else {
+        await supabase.from("category_budgets").upsert(
+          { household_id: currentHousehold.id, category, monthly_limit: value },
+          { onConflict: "household_id,category" }
+        );
+      }
+      await loadBudgets(categoryTotals);
+    });
+  });
 }
 
 // ============================================================
@@ -1682,9 +1921,10 @@ document.getElementById("form-shopping-item").addEventListener("submit", async (
   const { error } = await supabase.from("shopping_list_items").insert({
     household_id: currentHousehold.id, name, is_recurring, estimated_price,
   });
-  if (error) { alert("Error agregando ítem: " + error.message); return; }
+  if (error) { showToast("Error agregando ítem: " + error.message); return; }
   e.target.reset();
   await loadShoppingList();
+  logActivity(`agregó "${name}" a la lista de compras`);
 });
 
 document.getElementById("btn-clear-purchased").addEventListener("click", async () => {
@@ -1788,7 +2028,7 @@ document.getElementById("form-inventory-item").addEventListener("submit", async 
   const { error } = await supabase.from("household_inventory").insert({
     household_id: currentHousehold.id, name, status: "ok",
   });
-  if (error) { alert("Error agregando al inventario: " + error.message); return; }
+  if (error) { showToast("Error agregando al inventario: " + error.message); return; }
   e.target.reset();
   await loadInventory();
 });
@@ -1860,22 +2100,42 @@ document.getElementById("form-event").addEventListener("submit", async (e) => {
   const date = document.getElementById("event-date").value;
   const startTime = document.getElementById("event-start-time").value;
   const endTime = document.getElementById("event-end-time").value;
+  const recurrence = document.getElementById("event-recurrence").value;
   if (!title || !date || !startTime) return;
 
-  const { data, error } = await supabase.from("household_events").insert({
-    household_id: currentHousehold.id,
-    title,
-    description: description || null,
-    start_at: new Date(`${date}T${startTime}`).toISOString(),
-    end_at: endTime ? new Date(`${date}T${endTime}`).toISOString() : null,
-    created_by: currentUser.id,
-    created_by_email: currentUser.email,
-  }).select().single();
-  if (error) { alert("Error agregando actividad: " + error.message); return; }
+  // Para actividades recurrentes, generamos de una vez las próximas 8
+  // ocurrencias (en vez de crearlas una por una a medida que pasa el tiempo).
+  const OCCURRENCES = recurrence === "none" ? 1 : 8;
+  const baseStart = new Date(`${date}T${startTime}`);
+  const baseEnd = endTime ? new Date(`${date}T${endTime}`) : null;
+
+  const rows = [];
+  for (let i = 0; i < OCCURRENCES; i++) {
+    const start = new Date(baseStart);
+    const end = baseEnd ? new Date(baseEnd) : null;
+    if (recurrence === "daily") { start.setDate(start.getDate() + i); if (end) end.setDate(end.getDate() + i); }
+    else if (recurrence === "weekly") { start.setDate(start.getDate() + i * 7); if (end) end.setDate(end.getDate() + i * 7); }
+    else if (recurrence === "monthly") { start.setMonth(start.getMonth() + i); if (end) end.setMonth(end.getMonth() + i); }
+
+    rows.push({
+      household_id: currentHousehold.id,
+      title,
+      description: description || null,
+      start_at: start.toISOString(),
+      end_at: end ? end.toISOString() : null,
+      created_by: currentUser.id,
+      created_by_email: currentUser.email,
+      recurrence,
+    });
+  }
+
+  const { data, error } = await supabase.from("household_events").insert(rows).select();
+  if (error) { showToast("Error agregando actividad: " + error.message); return; }
   e.target.reset();
   setDefaultEventTimes();
   await loadEvents();
-  syncEventToGoogle("create", data);
+  (data || []).forEach((ev) => syncEventToGoogle("create", ev));
+  logActivity(`agendó "${title}"${recurrence !== "none" ? " (recurrente)" : ""}`);
 });
 
 function formatEventDate(iso) {
@@ -1923,10 +2183,11 @@ function renderEventCard(ev) {
   const timeRange = ev.end_at
     ? `${formatEventTime(ev.start_at)} – ${formatEventTime(ev.end_at)}`
     : formatEventTime(ev.start_at);
+  const recurrenceLabel = { daily: "Diaria", weekly: "Semanal", monthly: "Mensual" }[ev.recurrence];
   return `
     <div class="event-card">
       <div class="event-info">
-        <div class="event-time">${formatEventDate(ev.start_at)} · ${timeRange}</div>
+        <div class="event-time">${formatEventDate(ev.start_at)} · ${timeRange}${recurrenceLabel ? ` · <span class="task-badge">${recurrenceLabel}</span>` : ""}</div>
         <div class="event-title">${escapeHtml(ev.title)}</div>
         ${ev.description ? `<div class="event-desc">${escapeHtml(ev.description)}</div>` : ""}
         ${ev.created_by_email ? `<div class="event-desc">Agregado por ${escapeHtml(ev.created_by_email)}</div>` : ""}
@@ -2292,9 +2553,10 @@ document.getElementById("form-task").addEventListener("submit", async (e) => {
     payload.column_id = sortedCols.length ? sortedCols[0].id : null;
     ({ error } = await supabase.from("household_tasks").insert(payload));
   }
-  if (error) { alert("Error guardando la tarea: " + error.message); return; }
+  if (error) { showToast("Error guardando la tarea: " + error.message); return; }
   closeTaskModal();
   await loadTasks();
+  logActivity(id ? `editó la tarea "${payload.title}"` : `creó la tarea "${payload.title}"`);
 });
 
 function computeNextDueDate(dueDateStr, recurrence) {
@@ -2471,7 +2733,7 @@ document.getElementById("form-column").addEventListener("submit", async (e) => {
   const { error } = await supabase.from("task_columns").insert({
     household_id: currentHousehold.id, name, position: maxPos + 1,
   });
-  if (error) { alert("Error agregando columna: " + error.message); return; }
+  if (error) { showToast("Error agregando columna: " + error.message); return; }
   closeColumnModal();
   await loadTasks();
 });
@@ -2489,8 +2751,8 @@ async function persistColumnOrder() {
 
 async function deleteColumn(columnId) {
   const hasTasksHere = allHouseholdTasks.some((t) => t.column_id === columnId);
-  if (hasTasksHere) { alert("Esta columna tiene tareas — muévelas o bórralas antes de eliminarla."); return; }
-  if (taskColumns.length <= 1) { alert("Debe quedar al menos una columna."); return; }
+  if (hasTasksHere) { showToast("Esta columna tiene tareas — muévelas o bórralas antes de eliminarla."); return; }
+  if (taskColumns.length <= 1) { showToast("Debe quedar al menos una columna."); return; }
   if (!confirm("¿Eliminar esta columna?")) return;
   await supabase.from("task_columns").delete().eq("id", columnId);
   await loadTasks();
@@ -2592,6 +2854,16 @@ async function loadTasks() {
 
 // ---------------- INIT ----------------
 initAuthTabs();
+
+function maybeShowOnboarding() {
+  let seen = false;
+  try { seen = localStorage.getItem("hogar-finanzas-onboarding-seen") === "true"; } catch {}
+  if (!seen) document.getElementById("onboarding-modal").style.display = "flex";
+}
+document.getElementById("btn-close-onboarding").addEventListener("click", () => {
+  document.getElementById("onboarding-modal").style.display = "none";
+  try { localStorage.setItem("hogar-finanzas-onboarding-seen", "true"); } catch {}
+});
 
 // Los widgets "Hoy en tu hogar" del Dashboard son estáticos (no se
 // regeneran en cada carga), así que se conectan una sola vez acá.
