@@ -1645,6 +1645,7 @@ document.getElementById("form-event").addEventListener("submit", async (e) => {
   }).select().single();
   if (error) { alert("Error agregando actividad: " + error.message); return; }
   e.target.reset();
+  setDefaultEventTimes();
   await loadEvents();
   syncEventToGoogle("create", data);
 });
@@ -2034,6 +2035,25 @@ function populateTimeSelect(selectEl, includeEmptyOption) {
 }
 populateTimeSelect(document.getElementById("event-start-time"), false);
 populateTimeSelect(document.getElementById("event-end-time"), true);
+
+function currentTimeRounded15() {
+  const now = new Date();
+  let h = now.getHours();
+  let m = Math.ceil(now.getMinutes() / 15) * 15;
+  if (m === 60) { m = 0; h = (h + 1) % 24; }
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function setDefaultEventTimes() {
+  const startSelect = document.getElementById("event-start-time");
+  const endSelect = document.getElementById("event-end-time");
+  if (!startSelect || !endSelect) return;
+  const startValue = currentTimeRounded15();
+  startSelect.value = startValue;
+  const [h, m] = startValue.split(":").map(Number);
+  endSelect.value = `${String((h + 1) % 24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+setDefaultEventTimes();
 
 document.getElementById("event-start-time").addEventListener("change", (e) => {
   const [h, m] = e.target.value.split(":").map(Number);
