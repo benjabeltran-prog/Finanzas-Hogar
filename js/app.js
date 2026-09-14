@@ -2035,6 +2035,14 @@ function populateTimeSelect(selectEl, includeEmptyOption) {
 populateTimeSelect(document.getElementById("event-start-time"), false);
 populateTimeSelect(document.getElementById("event-end-time"), true);
 
+document.getElementById("event-start-time").addEventListener("change", (e) => {
+  const [h, m] = e.target.value.split(":").map(Number);
+  const endH = (h + 1) % 24;
+  const endValue = `${String(endH).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  const endSelect = document.getElementById("event-end-time");
+  if (endSelect) endSelect.value = endValue;
+});
+
 // Mide el alto real del topbar y del sidebar para que el sticky
 // del timeline (en mobile) se pegue en el lugar exacto, sin adivinar píxeles.
 function updateStickyOffsets() {
