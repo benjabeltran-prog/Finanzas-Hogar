@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=29" />
+<link rel="stylesheet" href="css/style.css?v=30" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -441,13 +441,10 @@
           <option value="media">Media</option>
           <option value="baja">Baja</option>
         </select>
+        <button type="button" id="btn-open-add-column" class="icon-btn-small" title="Agregar columna">+</button>
       </div>
 
       <div class="kanban-board" id="kanban-board"></div>
-      <div class="inline-form">
-        <input type="text" id="new-column-name" placeholder="Nombre de la columna nueva" />
-        <button type="button" id="btn-add-column" class="btn-ghost">+ Agregar columna</button>
-      </div>
     </section>
 
     </main>
@@ -568,8 +565,24 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=29"></script>
-<script type="module" src="js/pdfParser.js?v=29"></script>
-<script type="module" src="js/app.js?v=29"></script>
+<!-- ============ MODAL NUEVA COLUMNA ============ -->
+<div id="column-modal" class="modal" style="display:none">
+  <div class="modal-box">
+    <h3>Nueva columna</h3>
+    <form id="form-column">
+      <div class="modal-section">
+        <input type="text" id="new-column-name" placeholder="Nombre de la columna" required style="width:100%" />
+      </div>
+      <div class="inline-form">
+        <button type="submit" class="btn-primary">Guardar</button>
+        <button type="button" id="btn-cancel-column" class="btn-ghost">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script type="module" src="js/supabaseClient.js?v=30"></script>
+<script type="module" src="js/pdfParser.js?v=30"></script>
+<script type="module" src="js/app.js?v=30"></script>
 </body>
 </html>
