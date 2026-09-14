@@ -631,7 +631,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
-.event-time-field input { font-size: 0.95em; }
+.event-time-field input, .event-time-field select { font-size: 0.95em; }
 
 .event-card {
   background: var(--panel);
