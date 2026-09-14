@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=25" />
+<link rel="stylesheet" href="css/style.css?v=26" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -138,6 +138,7 @@
       <div class="side-group-label">Hogar</div>
       <button class="side-tab" data-tab="compras" data-icon="compras">Lista de Compras</button>
       <button class="side-tab" data-tab="planificacion" data-icon="planificacion">Planificación</button>
+      <button class="side-tab" data-tab="tareas" data-icon="tareas">Tareas</button>
     </nav>
 
     <main class="content">
@@ -420,6 +421,35 @@
       <div id="events-list"></div>
     </section>
 
+    <!-- TAREAS DEL HOGAR -->
+    <section id="tab-tareas" class="tab-panel">
+      <h2>Tareas del hogar</h2>
+
+      <h3 class="section-title">Hoy</h3>
+      <div id="tasks-today-list"></div>
+
+      <div class="inline-form">
+        <button type="button" id="btn-new-task" class="btn-primary">+ Nueva tarea</button>
+      </div>
+
+      <div class="task-filters">
+        <div class="filter-group">
+          <button type="button" class="filter-chip active" data-task-status="pending">Pendientes</button>
+          <button type="button" class="filter-chip" data-task-status="completed">Completadas</button>
+          <button type="button" class="filter-chip" data-task-status="all">Todas</button>
+        </div>
+        <select id="task-filter-person"><option value="">Todas las personas</option></select>
+        <select id="task-filter-priority">
+          <option value="">Toda prioridad</option>
+          <option value="alta">Alta</option>
+          <option value="media">Media</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+
+      <div id="tasks-list"></div>
+    </section>
+
     </main>
   </div>
 
@@ -491,8 +521,55 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=25"></script>
-<script type="module" src="js/pdfParser.js?v=25"></script>
-<script type="module" src="js/app.js?v=25"></script>
+<!-- ============ MODAL NUEVA/EDITAR TAREA ============ -->
+<div id="task-modal" class="modal" style="display:none">
+  <div class="modal-box">
+    <h3 id="task-modal-title">Nueva tarea</h3>
+    <form id="form-task">
+      <input type="hidden" id="task-id" value="" />
+      <div class="modal-section">
+        <input type="text" id="task-title" placeholder="Nombre de la tarea" required style="width:100%" />
+      </div>
+      <div class="modal-section">
+        <textarea id="task-description" placeholder="Descripción (opcional)" style="width:100%; min-height:60px;"></textarea>
+      </div>
+      <div class="modal-section">
+        <label class="drawer-label">Responsable</label>
+        <select id="task-assigned" style="width:100%">
+          <option value="">Sin asignar</option>
+        </select>
+      </div>
+      <div class="modal-section">
+        <label class="drawer-label">Fecha límite</label>
+        <input type="date" id="task-due-date" style="width:100%" />
+      </div>
+      <div class="modal-section">
+        <label class="drawer-label">Prioridad</label>
+        <select id="task-priority" style="width:100%">
+          <option value="baja">Baja</option>
+          <option value="media" selected>Media</option>
+          <option value="alta">Alta</option>
+        </select>
+      </div>
+      <div class="modal-section">
+        <label class="drawer-label">Repetición</label>
+        <select id="task-recurrence" style="width:100%">
+          <option value="none">No se repite</option>
+          <option value="daily">Diaria</option>
+          <option value="weekly">Semanal</option>
+          <option value="monthly">Mensual</option>
+        </select>
+      </div>
+      <div class="inline-form">
+        <button type="submit" class="btn-primary">Guardar</button>
+        <button type="button" id="btn-cancel-task" class="btn-ghost">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script type="module" src="js/supabaseClient.js?v=26"></script>
+<script type="module" src="js/pdfParser.js?v=26"></script>
+<script type="module" src="js/app.js?v=26"></script>
 </body>
 </html>
