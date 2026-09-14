@@ -977,6 +977,34 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .kanban-card { cursor: grab; }
 .kanban-cards { min-height: 44px; }
 
+.icon-btn-small {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1.1em;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+}
+.icon-btn-small:hover { border-color: var(--accent); }
+
+.kanban-drag-handle {
+  cursor: grab;
+  color: var(--muted);
+  font-size: 1.1em;
+  line-height: 1;
+  padding: 0 2px;
+}
+.kanban-drag-handle:active { cursor: grabbing; }
+.kanban-column-title { cursor: pointer; flex: 1; }
+.kanban-column-header .kanban-count, .kanban-column-header .kanban-toggle-icon { cursor: pointer; }
+
 /* ---------- CHAT IA ---------- */
 .chat-log {
   height: 380px;
