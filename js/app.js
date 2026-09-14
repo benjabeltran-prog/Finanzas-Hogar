@@ -1049,6 +1049,67 @@ async function loadDashboard() {
 
   syncSavingsChartFilters();
   renderTimeline(summariesByMonthId);
+  await loadDashboardOverview();
+}
+
+async function loadDashboardOverview() {
+  const today = todayStr();
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+
+  // --- Actividades de hoy ---
+  const { data: todayEvents } = await supabase
+    .from("household_events").select("*").eq("household_id", currentHousehold.id)
+    .gte("start_at", `${today}T00:00:00`).lt("start_at", `${tomorrowStr}T00:00:00`)
+    .order("start_at");
+  const eventsEl = document.getElementById("dashboard-today-events");
+  eventsEl.innerHTML = (todayEvents && todayEvents.length)
+    ? todayEvents.map((ev) => `<div class="dashboard-mini-item"><strong>${formatEventTime(ev.start_at)}</strong> ${escapeHtml(ev.title)}</div>`).join("")
+    : `<p class="muted">Sin actividades hoy.</p>`;
+
+  // --- Tareas de hoy ---
+  const { data: todayTasks } = await supabase
+    .from("household_tasks").select("*").eq("household_id", currentHousehold.id)
+    .eq("due_date", today).eq("is_completed", false);
+  const tasksEl = document.getElementById("dashboard-today-tasks");
+  tasksEl.innerHTML = (todayTasks && todayTasks.length)
+    ? todayTasks.map((t) => `<div class="dashboard-mini-item"><span class="task-badge priority-${t.priority}">${t.priority}</span> ${escapeHtml(t.title)}</div>`).join("")
+    : `<p class="muted">Sin tareas para hoy.</p>`;
+
+  // --- Lista de compras pendiente ---
+  const { data: pendingShopping } = await supabase
+    .from("shopping_list_items").select("name").eq("household_id", currentHousehold.id).eq("is_purchased", false);
+  const shoppingEl = document.getElementById("dashboard-shopping-summary");
+  if (pendingShopping && pendingShopping.length) {
+    const preview = pendingShopping.slice(0, 4).map((i) => escapeHtml(i.name)).join(", ");
+    const extra = pendingShopping.length > 4 ? ` y ${pendingShopping.length - 4} más` : "";
+    shoppingEl.innerHTML = `<div class="dashboard-mini-item">${pendingShopping.length} ítem(s) pendientes: ${preview}${extra}</div>`;
+  } else {
+    shoppingEl.innerHTML = `<p class="muted">Lista de compras al día.</p>`;
+  }
+
+  // --- Alertas importantes ---
+  const alerts = [];
+
+  const { data: overdueTasks } = await supabase
+    .from("household_tasks").select("id").eq("household_id", currentHousehold.id)
+    .eq("is_completed", false).lt("due_date", today);
+  if (overdueTasks && overdueTasks.length) {
+    alerts.push({ type: "danger", text: `Tienes ${overdueTasks.length} tarea(s) atrasada(s).`, goto: "tareas" });
+  }
+
+  const { data: currentSummaryRow } = await supabase
+    .from("v_month_summary").select("ahorro").eq("month_id", currentMonth.id).single();
+  if (currentSummaryRow && Number(currentSummaryRow.ahorro) < 0) {
+    alerts.push({ type: "danger", text: `El ahorro de este mes está en negativo (${fmt(currentSummaryRow.ahorro)}).`, goto: "historial" });
+  }
+
+  const alertsEl = document.getElementById("dashboard-alerts");
+  alertsEl.innerHTML = alerts.length
+    ? alerts.map((a) => `<div class="dashboard-alert ${a.type}" data-goto="${a.goto}">⚠ ${a.text}</div>`).join("")
+    : "";
+  bindCardNavigation("dashboard-alerts");
 }
 
 // ---------------- FILTROS DEL GRÁFICO DE AHORRO ----------------
