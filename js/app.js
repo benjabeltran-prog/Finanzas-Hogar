@@ -2490,6 +2490,12 @@ async function loadTasks() {
 // ---------------- INIT ----------------
 initAuthTabs();
 
+// Los widgets "Hoy en tu hogar" del Dashboard son estáticos (no se
+// regeneran en cada carga), así que se conectan una sola vez acá.
+document.querySelectorAll(".dashboard-today-widget[data-goto]").forEach((el) => {
+  el.addEventListener("click", () => goToTab(el.dataset.goto));
+});
+
 // Selectores de hora tipo Google Calendar (cada 15 minutos)
 function populateTimeSelect(selectEl, includeEmptyOption) {
   if (!selectEl) return;
