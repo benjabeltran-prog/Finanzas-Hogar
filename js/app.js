@@ -198,6 +198,7 @@ async function selectHousehold(id) {
   await loadMonths();
   await loadShoppingList();
   await loadEvents();
+  await refreshGoogleCalendarStatus();
 }
 
 // ---------------- MODO DE HOGAR (conjunto / separado) ----------------
@@ -1633,7 +1634,7 @@ document.getElementById("form-event").addEventListener("submit", async (e) => {
   const endTime = document.getElementById("event-end-time").value;
   if (!title || !date || !startTime) return;
 
-  const { error } = await supabase.from("household_events").insert({
+  const { data, error } = await supabase.from("household_events").insert({
     household_id: currentHousehold.id,
     title,
     description: description || null,
@@ -1641,10 +1642,11 @@ document.getElementById("form-event").addEventListener("submit", async (e) => {
     end_at: endTime ? new Date(`${date}T${endTime}`).toISOString() : null,
     created_by: currentUser.id,
     created_by_email: currentUser.email,
-  });
+  }).select().single();
   if (error) { alert("Error agregando actividad: " + error.message); return; }
   e.target.reset();
   await loadEvents();
+  syncEventToGoogle("create", data);
 });
 
 function formatEventDate(iso) {
@@ -1710,8 +1712,11 @@ function renderEventCard(ev) {
 function attachEventDeleteHandlers(container) {
   container.querySelectorAll("[data-del-event]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      await supabase.from("household_events").delete().eq("id", btn.dataset.delEvent);
+      const id = btn.dataset.delEvent;
+      const ev = allHouseholdEvents.find((e) => e.id === id);
+      await supabase.from("household_events").delete().eq("id", id);
       await loadEvents();
+      if (ev) syncEventToGoogle("delete", ev);
     });
   });
 }
@@ -1906,7 +1911,7 @@ async function executeChatResponse(rawAnswer) {
       if (error) return `${reply}\n\n(Pero hubo un error guardándolo: ${error.message})`;
       await loadShoppingList();
     } else if (action === "add_event") {
-      const { error } = await supabase.from("household_events").insert({
+      const { data: newEv, error } = await supabase.from("household_events").insert({
         household_id: currentHousehold.id,
         title: params.title,
         description: params.description || null,
@@ -1914,9 +1919,10 @@ async function executeChatResponse(rawAnswer) {
         end_at: params.end_at ? new Date(params.end_at).toISOString() : null,
         created_by: currentUser.id,
         created_by_email: currentUser.email,
-      });
+      }).select().single();
       if (error) return `${reply}\n\n(Pero hubo un error agendándolo: ${error.message})`;
       await loadEvents();
+      syncEventToGoogle("create", newEv);
     } else if (action === "add_expense") {
       if (!currentMonth) return `${reply}\n\n(No hay un mes seleccionado para registrar el gasto.)`;
       const { error } = await supabase.from("extra_expenses").insert({
@@ -1968,6 +1974,48 @@ document.getElementById("theme-toggle").addEventListener("click", () => {
   const current = document.documentElement.getAttribute("data-theme") || "dark";
   applyTheme(current === "light" ? "dark" : "light");
 });
+
+// ============================================================
+// CONEXIÓN CON GOOGLE CALENDAR
+// ============================================================
+const GOOGLE_CLIENT_ID = "389235120747-gb2o7kfjg6co1brb0bpt0mfoh9ih7cms.apps.googleusercontent.com";
+const GOOGLE_REDIRECT_URI = "https://cppunumoinkobprdukqw.supabase.co/functions/v1/google-oauth-callback";
+
+async function refreshGoogleCalendarStatus() {
+  if (!currentHousehold) return;
+  const statusText = document.getElementById("gcal-status-text");
+  const connectLink = document.getElementById("gcal-connect-link");
+  if (!statusText || !connectLink) return;
+
+  const { data: connected } = await supabase.rpc("is_google_calendar_connected", { hh_id: currentHousehold.id });
+
+  if (connected) {
+    statusText.textContent = "✓ Este hogar tiene Google Calendar conectado — las actividades se sincronizan solas.";
+    connectLink.style.display = "none";
+  } else {
+    statusText.textContent = "Conecta este hogar con Google Calendar para que las actividades aparezcan automáticamente allá.";
+    const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    authUrl.searchParams.set("client_id", GOOGLE_CLIENT_ID);
+    authUrl.searchParams.set("redirect_uri", GOOGLE_REDIRECT_URI);
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set("scope", "https://www.googleapis.com/auth/calendar");
+    authUrl.searchParams.set("access_type", "offline");
+    authUrl.searchParams.set("prompt", "consent");
+    authUrl.searchParams.set("state", currentHousehold.id);
+    connectLink.href = authUrl.toString();
+    connectLink.style.display = "inline-block";
+  }
+}
+
+async function syncEventToGoogle(action, ev) {
+  try {
+    await supabase.functions.invoke("google-calendar-sync", {
+      body: { household_id: currentHousehold.id, action, event: ev },
+    });
+  } catch (err) {
+    console.error("Error sincronizando con Google Calendar:", err);
+  }
+}
 
 // ---------------- INIT ----------------
 initAuthTabs();
