@@ -199,6 +199,7 @@ async function selectHousehold(id) {
   await loadHouseholdMembers();
   await loadMonths();
   await loadShoppingList();
+  await loadInventory();
   await loadEvents();
   await refreshGoogleCalendarStatus();
   await loadTasks();
@@ -1742,18 +1743,29 @@ async function loadShoppingList() {
         is_purchased: nowPurchased, purchased_at: nowPurchased ? new Date().toISOString() : null,
       }).eq("id", id);
 
-      // Si es recurrente y se acaba de marcar como comprado, vuelve solo a la lista
-      // (con el mismo precio estimado, para no perder la referencia)
-      if (nowPurchased && isRecurring) {
+      // Si se acaba de marcar como comprado: resetea el inventario (si existe
+      // un ítem con el mismo nombre) y, si era recurrente, vuelve solo a la lista.
+      if (nowPurchased) {
         const { data: item } = await supabase.from("shopping_list_items").select("name, estimated_price").eq("id", id).single();
         if (item) {
-          await supabase.from("shopping_list_items").insert({
-            household_id: currentHousehold.id, name: item.name, is_recurring: true,
-            estimated_price: item.estimated_price,
-          });
+          const { data: invItem } = await supabase
+            .from("household_inventory").select("id").eq("household_id", currentHousehold.id)
+            .ilike("name", item.name).maybeSingle();
+          if (invItem) {
+            await supabase.from("household_inventory")
+              .update({ status: "ok", updated_at: new Date().toISOString() }).eq("id", invItem.id);
+          }
+
+          if (isRecurring) {
+            await supabase.from("shopping_list_items").insert({
+              household_id: currentHousehold.id, name: item.name, is_recurring: true,
+              estimated_price: item.estimated_price,
+            });
+          }
         }
       }
       await loadShoppingList();
+      await loadInventory();
     });
   });
 
@@ -1761,6 +1773,79 @@ async function loadShoppingList() {
     btn.addEventListener("click", async () => {
       await supabase.from("shopping_list_items").delete().eq("id", btn.dataset.delShopping);
       await loadShoppingList();
+    });
+  });
+}
+
+// ============================================================
+// INVENTARIO DEL HOGAR
+// ============================================================
+document.getElementById("form-inventory-item").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("inventory-item-name").value.trim();
+  if (!name) return;
+
+  const { error } = await supabase.from("household_inventory").insert({
+    household_id: currentHousehold.id, name, status: "ok",
+  });
+  if (error) { alert("Error agregando al inventario: " + error.message); return; }
+  e.target.reset();
+  await loadInventory();
+});
+
+async function ensureShoppingListItemFor(name) {
+  const { data: existing } = await supabase
+    .from("shopping_list_items").select("id").eq("household_id", currentHousehold.id)
+    .ilike("name", name).eq("is_purchased", false);
+  if (existing && existing.length) return; // ya está pendiente en la lista, no duplicar
+  await supabase.from("shopping_list_items").insert({
+    household_id: currentHousehold.id, name, is_recurring: true,
+  });
+}
+
+const INVENTORY_STATUS_ORDER = ["ok", "low", "out"];
+const INVENTORY_STATUS_LABELS = { ok: "En stock", low: "Quedando poco", out: "Agotado" };
+
+async function cycleInventoryStatus(item) {
+  const idx = INVENTORY_STATUS_ORDER.indexOf(item.status);
+  const newStatus = INVENTORY_STATUS_ORDER[(idx + 1) % INVENTORY_STATUS_ORDER.length];
+
+  await supabase.from("household_inventory")
+    .update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", item.id);
+
+  if (newStatus === "out") {
+    await ensureShoppingListItemFor(item.name);
+    await loadShoppingList();
+  }
+  await loadInventory();
+}
+
+async function loadInventory() {
+  const { data } = await supabase
+    .from("household_inventory").select("*").eq("household_id", currentHousehold.id)
+    .order("name");
+  const items = data || [];
+
+  const el = document.getElementById("inventory-list");
+  el.innerHTML = items.length ? items.map((item) => `
+    <div class="inventory-item">
+      <span class="inventory-name">${escapeHtml(item.name)}</span>
+      <button type="button" class="inventory-status-badge status-${item.status}" data-inventory-id="${item.id}">
+        ${INVENTORY_STATUS_LABELS[item.status]}
+      </button>
+      <button class="btn-danger" data-del-inventory="${item.id}">${icon("trash", 14)}</button>
+    </div>`).join("") : `<p class="muted">No hay productos en el inventario todavía.</p>`;
+
+  el.querySelectorAll("[data-inventory-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const item = items.find((i) => i.id === btn.dataset.inventoryId);
+      if (item) cycleInventoryStatus(item);
+    });
+  });
+  el.querySelectorAll("[data-del-inventory]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await supabase.from("household_inventory").delete().eq("id", btn.dataset.delInventory);
+      await loadInventory();
     });
   });
 }
