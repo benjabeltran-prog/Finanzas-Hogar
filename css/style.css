@@ -622,21 +622,42 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 }
 
 /* ---------- PLANIFICACIÓN / EVENTOS ---------- */
+.event-time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.72em;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.event-time-field input { font-size: 0.95em; }
+
 .event-card {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px 16px;
   margin-bottom: 10px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
   flex-wrap: wrap;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
+.event-card:hover { border-left-color: var(--accent-2); transform: translateX(2px); }
 .event-info { flex: 1; min-width: 200px; }
-.event-title { font-weight: 600; margin-bottom: 4px; }
-.event-time { font-size: 0.82em; color: var(--muted); }
+.event-time {
+  font-size: 0.78em;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 3px;
+}
+.event-title { font-weight: 600; margin-bottom: 2px; }
 .event-desc { font-size: 0.85em; color: var(--muted); margin-top: 4px; }
 .event-actions { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
 .event-gcal-link {
