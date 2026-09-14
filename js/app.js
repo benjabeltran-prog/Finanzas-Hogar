@@ -804,13 +804,43 @@ async function loadCreditCardTransactions() {
       <td>${t.transaction_date || "-"}</td>
       <td>${t.description}</td>
       <td>${t.installment_info || "-"}</td>
-      <td>${fmt(t.amount)}</td>
+      <td>
+        <input type="number" class="amount-edit-input" data-cc-amount-id="${t.id}"
+          data-statement-id="${t.statement_id}" data-old-amount="${t.amount}"
+          value="${t.amount}" step="1" />
+      </td>
       <td>
         <select class="category-select" data-cc-id="${t.id}" data-cc-desc="${escapeHtml(t.description)}">
           ${categoryOptions.map((c) => `<option value="${c}" ${c === t.category ? "selected" : ""}>${c}</option>`).join("")}
         </select>
       </td>
     </tr>`).join("");
+
+  tbody.querySelectorAll(".amount-edit-input").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const id = input.dataset.ccAmountId;
+      const statementId = input.dataset.statementId;
+      const oldAmount = Number(input.dataset.oldAmount);
+      const newAmount = Number(input.value);
+      if (!newAmount || newAmount === oldAmount) return;
+
+      await supabase.from("credit_card_transactions").update({ amount: newAmount }).eq("id", id);
+
+      // Ajustamos el total de la cartola por la diferencia, para que el
+      // total de la tarjeta siga cuadrando con la suma real de los movimientos.
+      const { data: stmt } = await supabase
+        .from("credit_card_statements").select("total_billed").eq("id", statementId).single();
+      if (stmt) {
+        const newTotal = Number(stmt.total_billed) + (newAmount - oldAmount);
+        await supabase.from("credit_card_statements").update({ total_billed: newTotal }).eq("id", statementId);
+      }
+
+      await loadCreditCardTransactions();
+      await loadDashboard();
+      await loadHistory();
+      await loadCategoryBreakdown();
+    });
+  });
 
   tbody.querySelectorAll("[data-cc-id]").forEach((sel) => {
     sel.addEventListener("change", async () => {
