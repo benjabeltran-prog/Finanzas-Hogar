@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=26" />
+<link rel="stylesheet" href="css/style.css?v=27" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -433,11 +433,6 @@
       </div>
 
       <div class="task-filters">
-        <div class="filter-group">
-          <button type="button" class="filter-chip active" data-task-status="pending">Pendientes</button>
-          <button type="button" class="filter-chip" data-task-status="completed">Completadas</button>
-          <button type="button" class="filter-chip" data-task-status="all">Todas</button>
-        </div>
         <select id="task-filter-person"><option value="">Todas las personas</option></select>
         <select id="task-filter-priority">
           <option value="">Toda prioridad</option>
@@ -447,7 +442,30 @@
         </select>
       </div>
 
-      <div id="tasks-list"></div>
+      <div class="kanban-board">
+        <div class="kanban-column" data-status="todo">
+          <div class="kanban-column-header">
+            <span>To Do</span>
+            <span class="kanban-count" id="kanban-count-todo">0</span>
+          </div>
+          <div class="kanban-cards" id="kanban-cards-todo"></div>
+        </div>
+        <div class="kanban-column" data-status="in_progress">
+          <div class="kanban-column-header">
+            <span>En Progreso</span>
+            <span class="kanban-count" id="kanban-count-in_progress">0</span>
+          </div>
+          <div class="kanban-cards" id="kanban-cards-in_progress"></div>
+        </div>
+        <div class="kanban-column collapsed" data-status="done" id="kanban-column-done">
+          <div class="kanban-column-header" id="kanban-done-toggle">
+            <span>Lista</span>
+            <span class="kanban-count" id="kanban-count-done">0</span>
+            <span class="kanban-toggle-icon">▾</span>
+          </div>
+          <div class="kanban-cards" id="kanban-cards-done" style="display:none"></div>
+        </div>
+      </div>
     </section>
 
     </main>
@@ -568,8 +586,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=26"></script>
-<script type="module" src="js/pdfParser.js?v=26"></script>
-<script type="module" src="js/app.js?v=26"></script>
+<script type="module" src="js/supabaseClient.js?v=27"></script>
+<script type="module" src="js/pdfParser.js?v=27"></script>
+<script type="module" src="js/app.js?v=27"></script>
 </body>
 </html>
