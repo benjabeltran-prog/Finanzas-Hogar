@@ -660,6 +660,20 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   border-radius: 10px;
   flex: 0 0 auto;
 }
+.shopping-price-input {
+  width: 90px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 0.85em;
+  color: var(--text);
+  font-family: inherit;
+  text-align: right;
+  flex: 0 0 auto;
+}
+.shopping-price-input:hover { border-color: var(--border); }
+.shopping-price-input:focus { border-color: var(--accent); background: var(--panel-2); outline: none; }
 
 /* ---------- PLANIFICACIÓN / EVENTOS ---------- */
 .event-time-field {
