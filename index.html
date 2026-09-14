@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=17" />
+<link rel="stylesheet" href="css/style.css?v=18" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -370,8 +370,18 @@
       <form id="form-event" class="inline-form">
         <input type="text" id="event-title" placeholder="Actividad (ej: Reunión apoderados)" required style="flex:1 1 100%" />
         <input type="text" id="event-description" placeholder="Descripción (opcional)" style="flex:1 1 100%" />
-        <input type="datetime-local" id="event-start" required />
-        <input type="datetime-local" id="event-end" />
+        <label class="event-time-field">
+          <span>Día</span>
+          <input type="date" id="event-date" required />
+        </label>
+        <label class="event-time-field">
+          <span>Desde</span>
+          <input type="time" id="event-start-time" required />
+        </label>
+        <label class="event-time-field">
+          <span>Hasta</span>
+          <input type="time" id="event-end-time" />
+        </label>
         <button type="submit" class="btn-primary">Agregar</button>
       </form>
 
@@ -477,8 +487,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=17"></script>
-<script type="module" src="js/pdfParser.js?v=17"></script>
-<script type="module" src="js/app.js?v=17"></script>
+<script type="module" src="js/supabaseClient.js?v=18"></script>
+<script type="module" src="js/pdfParser.js?v=18"></script>
+<script type="module" src="js/app.js?v=18"></script>
 </body>
 </html>
