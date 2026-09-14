@@ -2020,6 +2020,21 @@ async function syncEventToGoogle(action, ev) {
 // ---------------- INIT ----------------
 initAuthTabs();
 
+// Selectores de hora tipo Google Calendar (cada 15 minutos)
+function populateTimeSelect(selectEl, includeEmptyOption) {
+  if (!selectEl) return;
+  let html = includeEmptyOption ? `<option value="">Sin hora de término</option>` : `<option value="" disabled selected>Hora</option>`;
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const value = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      html += `<option value="${value}">${value}</option>`;
+    }
+  }
+  selectEl.innerHTML = html;
+}
+populateTimeSelect(document.getElementById("event-start-time"), false);
+populateTimeSelect(document.getElementById("event-end-time"), true);
+
 // Mide el alto real del topbar y del sidebar para que el sticky
 // del timeline (en mobile) se pegue en el lugar exacto, sin adivinar píxeles.
 function updateStickyOffsets() {
