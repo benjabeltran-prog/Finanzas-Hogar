@@ -40,6 +40,8 @@ const ICONS = {
   planificacion: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
   sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
   moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  tareas: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/>',
 };
 
 function icon(name, size = 18) {
@@ -199,6 +201,7 @@ async function selectHousehold(id) {
   await loadShoppingList();
   await loadEvents();
   await refreshGoogleCalendarStatus();
+  await loadTasks();
 }
 
 // ---------------- MODO DE HOGAR (conjunto / separado) ----------------
@@ -2077,6 +2080,210 @@ async function syncEventToGoogle(action, ev) {
   } catch (err) {
     console.error("Error sincronizando con Google Calendar:", err);
   }
+}
+
+// ============================================================
+// TAREAS DEL HOGAR
+// ============================================================
+let allHouseholdTasks = [];
+let taskStatusFilter = "pending";
+
+function openTaskModal(task) {
+  document.getElementById("task-modal-title").textContent = task ? "Editar tarea" : "Nueva tarea";
+  document.getElementById("task-id").value = task ? task.id : "";
+  document.getElementById("task-title").value = task ? task.title : "";
+  document.getElementById("task-description").value = task ? task.description || "" : "";
+  document.getElementById("task-assigned").value = task ? task.assigned_to || "" : "";
+  document.getElementById("task-due-date").value = task ? task.due_date || "" : "";
+  document.getElementById("task-priority").value = task ? task.priority : "media";
+  document.getElementById("task-recurrence").value = task ? task.recurrence : "none";
+  document.getElementById("task-modal").style.display = "flex";
+}
+function closeTaskModal() {
+  document.getElementById("task-modal").style.display = "none";
+}
+
+document.getElementById("btn-new-task").addEventListener("click", () => openTaskModal(null));
+document.getElementById("btn-cancel-task").addEventListener("click", closeTaskModal);
+
+document.getElementById("form-task").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("task-id").value;
+  const payload = {
+    household_id: currentHousehold.id,
+    title: document.getElementById("task-title").value.trim(),
+    description: document.getElementById("task-description").value.trim() || null,
+    assigned_to: document.getElementById("task-assigned").value || null,
+    due_date: document.getElementById("task-due-date").value || null,
+    priority: document.getElementById("task-priority").value,
+    recurrence: document.getElementById("task-recurrence").value,
+  };
+  if (!payload.title) return;
+
+  let error;
+  if (id) {
+    ({ error } = await supabase.from("household_tasks").update(payload).eq("id", id));
+  } else {
+    payload.created_by = currentUser.id;
+    ({ error } = await supabase.from("household_tasks").insert(payload));
+  }
+  if (error) { alert("Error guardando la tarea: " + error.message); return; }
+  closeTaskModal();
+  await loadTasks();
+});
+
+function computeNextDueDate(dueDateStr, recurrence) {
+  if (!dueDateStr || recurrence === "none") return null;
+  const d = new Date(dueDateStr + "T00:00:00");
+  if (recurrence === "daily") d.setDate(d.getDate() + 1);
+  else if (recurrence === "weekly") d.setDate(d.getDate() + 7);
+  else if (recurrence === "monthly") d.setMonth(d.getMonth() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+async function toggleTaskComplete(task) {
+  const nowCompleted = !task.is_completed;
+  await supabase.from("household_tasks").update({
+    is_completed: nowCompleted,
+    completed_at: nowCompleted ? new Date().toISOString() : null,
+  }).eq("id", task.id);
+
+  // Si es recurrente y se acaba de completar, se crea la próxima instancia
+  if (nowCompleted && task.recurrence !== "none") {
+    const nextDate = computeNextDueDate(task.due_date, task.recurrence);
+    await supabase.from("household_tasks").insert({
+      household_id: currentHousehold.id,
+      title: task.title,
+      description: task.description,
+      assigned_to: task.assigned_to,
+      due_date: nextDate,
+      priority: task.priority,
+      recurrence: task.recurrence,
+      created_by: currentUser.id,
+    });
+  }
+  await loadTasks();
+}
+
+async function deleteTask(id) {
+  await supabase.from("household_tasks").delete().eq("id", id);
+  await loadTasks();
+}
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function renderTaskCard(task) {
+  const isOverdue = task.due_date && !task.is_completed && task.due_date < todayStr();
+  const personName = task.assigned_to ? (memberLabel(task.assigned_to) || "Integrante") : "Sin asignar";
+  const priorityLabel = { alta: "Alta", media: "Media", baja: "Baja" }[task.priority] || task.priority;
+
+  return `
+    <div class="task-card priority-${task.priority} ${task.is_completed ? "completed" : ""}">
+      <input type="checkbox" class="task-check" data-toggle-task="${task.id}" ${task.is_completed ? "checked" : ""} />
+      <div class="task-info">
+        <div class="task-title">${escapeHtml(task.title)}</div>
+        ${task.description ? `<div class="task-desc">${escapeHtml(task.description)}</div>` : ""}
+        <div class="task-meta">
+          <span class="task-badge">${escapeHtml(personName)}</span>
+          <span class="task-badge priority-${task.priority}">${priorityLabel}</span>
+          ${task.due_date ? `<span class="task-badge ${isOverdue ? "overdue" : ""}">${isOverdue ? "Atrasada · " : ""}${task.due_date}</span>` : ""}
+          ${task.recurrence !== "none" ? `<span class="task-badge">${{ daily: "Diaria", weekly: "Semanal", monthly: "Mensual" }[task.recurrence]}</span>` : ""}
+        </div>
+      </div>
+      <div class="task-actions">
+        <button type="button" class="btn-ghost" data-edit-task="${task.id}">${icon("edit", 14)}</button>
+        <button type="button" class="btn-danger" data-del-task="${task.id}">${icon("trash", 14)}</button>
+      </div>
+    </div>`;
+}
+
+function attachTaskCardHandlers(container) {
+  container.querySelectorAll("[data-toggle-task]").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const task = allHouseholdTasks.find((t) => t.id === cb.dataset.toggleTask);
+      if (task) toggleTaskComplete(task);
+    });
+  });
+  container.querySelectorAll("[data-edit-task]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const task = allHouseholdTasks.find((t) => t.id === btn.dataset.editTask);
+      if (task) openTaskModal(task);
+    });
+  });
+  container.querySelectorAll("[data-del-task]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (confirm("¿Eliminar esta tarea?")) deleteTask(btn.dataset.delTask);
+    });
+  });
+}
+
+function renderTasksToday() {
+  const today = todayStr();
+  const todayTasks = allHouseholdTasks.filter((t) => t.due_date === today && !t.is_completed);
+  const el = document.getElementById("tasks-today-list");
+  el.innerHTML = todayTasks.length
+    ? todayTasks.map(renderTaskCard).join("")
+    : `<p class="muted">No hay tareas pendientes para hoy.</p>`;
+  attachTaskCardHandlers(el);
+}
+
+function renderTaskListFiltered() {
+  const personFilter = document.getElementById("task-filter-person").value;
+  const priorityFilter = document.getElementById("task-filter-priority").value;
+
+  let filtered = allHouseholdTasks;
+  if (taskStatusFilter === "pending") filtered = filtered.filter((t) => !t.is_completed);
+  else if (taskStatusFilter === "completed") filtered = filtered.filter((t) => t.is_completed);
+  if (personFilter) filtered = filtered.filter((t) => t.assigned_to === personFilter);
+  if (priorityFilter) filtered = filtered.filter((t) => t.priority === priorityFilter);
+
+  // Pendientes primero por fecha; sin fecha al final
+  filtered = [...filtered].sort((a, b) => {
+    if (!a.due_date && !b.due_date) return 0;
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return a.due_date.localeCompare(b.due_date);
+  });
+
+  const el = document.getElementById("tasks-list");
+  el.innerHTML = filtered.length
+    ? filtered.map(renderTaskCard).join("")
+    : `<p class="muted">No hay tareas que coincidan con este filtro.</p>`;
+  attachTaskCardHandlers(el);
+}
+
+document.querySelectorAll("[data-task-status]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("[data-task-status]").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    taskStatusFilter = btn.dataset.taskStatus;
+    renderTaskListFiltered();
+  });
+});
+document.getElementById("task-filter-person").addEventListener("change", renderTaskListFiltered);
+document.getElementById("task-filter-priority").addEventListener("change", renderTaskListFiltered);
+
+async function loadTasks() {
+  const { data } = await supabase
+    .from("household_tasks").select("*").eq("household_id", currentHousehold.id)
+    .order("due_date", { ascending: true });
+  allHouseholdTasks = data || [];
+
+  // Poblar el filtro de personas con los integrantes del hogar
+  const personSelect = document.getElementById("task-filter-person");
+  const assignedSelect = document.getElementById("task-assigned");
+  const memberOptions = currentHouseholdMembers.map((m) => {
+    const label = m.display_name || (m.user_id === currentUser.id ? currentUser.email : "Integrante");
+    return `<option value="${m.user_id}">${escapeHtml(label)}</option>`;
+  }).join("");
+  if (personSelect) personSelect.innerHTML = `<option value="">Todas las personas</option>${memberOptions}`;
+  if (assignedSelect) assignedSelect.innerHTML = `<option value="">Sin asignar</option>${memberOptions}`;
+
+  renderTasksToday();
+  renderTaskListFiltered();
 }
 
 // ---------------- INIT ----------------
