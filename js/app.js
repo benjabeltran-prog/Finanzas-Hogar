@@ -2086,7 +2086,6 @@ async function syncEventToGoogle(action, ev) {
 // TAREAS DEL HOGAR
 // ============================================================
 let allHouseholdTasks = [];
-let taskStatusFilter = "pending";
 
 function openTaskModal(task) {
   document.getElementById("task-modal-title").textContent = task ? "Editar tarea" : "Nueva tarea";
@@ -2143,8 +2142,10 @@ function computeNextDueDate(dueDateStr, recurrence) {
 
 async function toggleTaskComplete(task) {
   const nowCompleted = !task.is_completed;
+  const newStatus = nowCompleted ? "done" : "todo";
   await supabase.from("household_tasks").update({
     is_completed: nowCompleted,
+    status: newStatus,
     completed_at: nowCompleted ? new Date().toISOString() : null,
   }).eq("id", task.id);
 
@@ -2159,6 +2160,40 @@ async function toggleTaskComplete(task) {
       due_date: nextDate,
       priority: task.priority,
       recurrence: task.recurrence,
+      status: "todo",
+      created_by: currentUser.id,
+    });
+  }
+  await loadTasks();
+}
+
+const TASK_STATUSES = ["todo", "in_progress", "done"];
+
+async function moveTask(taskId, direction) {
+  const task = allHouseholdTasks.find((t) => t.id === taskId);
+  if (!task) return;
+  const idx = TASK_STATUSES.indexOf(task.status || "todo");
+  const newIdx = direction === "left" ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= TASK_STATUSES.length) return;
+  const newStatus = TASK_STATUSES[newIdx];
+
+  await supabase.from("household_tasks").update({
+    status: newStatus,
+    is_completed: newStatus === "done",
+    completed_at: newStatus === "done" ? new Date().toISOString() : null,
+  }).eq("id", taskId);
+
+  if (newStatus === "done" && task.recurrence !== "none") {
+    const nextDate = computeNextDueDate(task.due_date, task.recurrence);
+    await supabase.from("household_tasks").insert({
+      household_id: currentHousehold.id,
+      title: task.title,
+      description: task.description,
+      assigned_to: task.assigned_to,
+      due_date: nextDate,
+      priority: task.priority,
+      recurrence: task.recurrence,
+      status: "todo",
       created_by: currentUser.id,
     });
   }
@@ -2175,25 +2210,48 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function renderTaskCard(task) {
-  const isOverdue = task.due_date && !task.is_completed && task.due_date < todayStr();
+function taskMetaHtml(task) {
+  const isOverdue = task.due_date && task.status !== "done" && task.due_date < todayStr();
   const personName = task.assigned_to ? (memberLabel(task.assigned_to) || "Integrante") : "Sin asignar";
   const priorityLabel = { alta: "Alta", media: "Media", baja: "Baja" }[task.priority] || task.priority;
+  return `
+    ${task.description ? `<div class="task-desc">${escapeHtml(task.description)}</div>` : ""}
+    <div class="task-meta">
+      <span class="task-badge">${escapeHtml(personName)}</span>
+      <span class="task-badge priority-${task.priority}">${priorityLabel}</span>
+      ${task.due_date ? `<span class="task-badge ${isOverdue ? "overdue" : ""}">${isOverdue ? "Atrasada · " : ""}${task.due_date}</span>` : ""}
+      ${task.recurrence !== "none" ? `<span class="task-badge">${{ daily: "Diaria", weekly: "Semanal", monthly: "Mensual" }[task.recurrence]}</span>` : ""}
+    </div>`;
+}
 
+// Tarjeta para "Hoy" — con checkbox de completado rápido (salta directo a Lista)
+function renderTaskCard(task) {
   return `
     <div class="task-card priority-${task.priority} ${task.is_completed ? "completed" : ""}">
       <input type="checkbox" class="task-check" data-toggle-task="${task.id}" ${task.is_completed ? "checked" : ""} />
       <div class="task-info">
         <div class="task-title">${escapeHtml(task.title)}</div>
-        ${task.description ? `<div class="task-desc">${escapeHtml(task.description)}</div>` : ""}
-        <div class="task-meta">
-          <span class="task-badge">${escapeHtml(personName)}</span>
-          <span class="task-badge priority-${task.priority}">${priorityLabel}</span>
-          ${task.due_date ? `<span class="task-badge ${isOverdue ? "overdue" : ""}">${isOverdue ? "Atrasada · " : ""}${task.due_date}</span>` : ""}
-          ${task.recurrence !== "none" ? `<span class="task-badge">${{ daily: "Diaria", weekly: "Semanal", monthly: "Mensual" }[task.recurrence]}</span>` : ""}
-        </div>
+        ${taskMetaHtml(task)}
       </div>
       <div class="task-actions">
+        <button type="button" class="btn-ghost" data-edit-task="${task.id}">${icon("edit", 14)}</button>
+        <button type="button" class="btn-danger" data-del-task="${task.id}">${icon("trash", 14)}</button>
+      </div>
+    </div>`;
+}
+
+// Tarjeta del tablero kanban — con flechas para mover entre columnas
+function renderKanbanCard(task) {
+  const status = task.status || "todo";
+  const canMoveLeft = status !== "todo";
+  const canMoveRight = status !== "done";
+  return `
+    <div class="kanban-card priority-${task.priority} ${status === "done" ? "completed" : ""}">
+      <div class="task-title">${escapeHtml(task.title)}</div>
+      ${taskMetaHtml(task)}
+      <div class="task-actions">
+        ${canMoveLeft ? `<button type="button" class="task-move-btn" data-move-task="${task.id}" data-move-dir="left" title="Retroceder">‹</button>` : ""}
+        ${canMoveRight ? `<button type="button" class="task-move-btn" data-move-task="${task.id}" data-move-dir="right" title="Avanzar">›</button>` : ""}
         <button type="button" class="btn-ghost" data-edit-task="${task.id}">${icon("edit", 14)}</button>
         <button type="button" class="btn-danger" data-del-task="${task.id}">${icon("trash", 14)}</button>
       </div>
@@ -2206,6 +2264,9 @@ function attachTaskCardHandlers(container) {
       const task = allHouseholdTasks.find((t) => t.id === cb.dataset.toggleTask);
       if (task) toggleTaskComplete(task);
     });
+  });
+  container.querySelectorAll("[data-move-task]").forEach((btn) => {
+    btn.addEventListener("click", () => moveTask(btn.dataset.moveTask, btn.dataset.moveDir));
   });
   container.querySelectorAll("[data-edit-task]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -2230,41 +2291,43 @@ function renderTasksToday() {
   attachTaskCardHandlers(el);
 }
 
-function renderTaskListFiltered() {
-  const personFilter = document.getElementById("task-filter-person").value;
-  const priorityFilter = document.getElementById("task-filter-priority").value;
-
-  let filtered = allHouseholdTasks;
-  if (taskStatusFilter === "pending") filtered = filtered.filter((t) => !t.is_completed);
-  else if (taskStatusFilter === "completed") filtered = filtered.filter((t) => t.is_completed);
-  if (personFilter) filtered = filtered.filter((t) => t.assigned_to === personFilter);
-  if (priorityFilter) filtered = filtered.filter((t) => t.priority === priorityFilter);
-
-  // Pendientes primero por fecha; sin fecha al final
-  filtered = [...filtered].sort((a, b) => {
+function sortTasks(tasks) {
+  return [...tasks].sort((a, b) => {
     if (!a.due_date && !b.due_date) return 0;
     if (!a.due_date) return 1;
     if (!b.due_date) return -1;
     return a.due_date.localeCompare(b.due_date);
   });
-
-  const el = document.getElementById("tasks-list");
-  el.innerHTML = filtered.length
-    ? filtered.map(renderTaskCard).join("")
-    : `<p class="muted">No hay tareas que coincidan con este filtro.</p>`;
-  attachTaskCardHandlers(el);
 }
 
-document.querySelectorAll("[data-task-status]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll("[data-task-status]").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    taskStatusFilter = btn.dataset.taskStatus;
-    renderTaskListFiltered();
+function renderKanbanBoard() {
+  const personFilter = document.getElementById("task-filter-person").value;
+  const priorityFilter = document.getElementById("task-filter-priority").value;
+
+  let filtered = allHouseholdTasks;
+  if (personFilter) filtered = filtered.filter((t) => t.assigned_to === personFilter);
+  if (priorityFilter) filtered = filtered.filter((t) => t.priority === priorityFilter);
+
+  TASK_STATUSES.forEach((status) => {
+    const columnTasks = sortTasks(filtered.filter((t) => (t.status || "todo") === status));
+    const container = document.getElementById(`kanban-cards-${status}`);
+    container.innerHTML = columnTasks.length
+      ? columnTasks.map(renderKanbanCard).join("")
+      : `<p class="muted kanban-empty">Sin tareas</p>`;
+    document.getElementById(`kanban-count-${status}`).textContent = columnTasks.length;
+    attachTaskCardHandlers(container);
   });
+}
+
+document.getElementById("task-filter-person").addEventListener("change", renderKanbanBoard);
+document.getElementById("task-filter-priority").addEventListener("change", renderKanbanBoard);
+
+document.getElementById("kanban-done-toggle").addEventListener("click", () => {
+  const column = document.getElementById("kanban-column-done");
+  const cards = document.getElementById("kanban-cards-done");
+  const isCollapsed = column.classList.toggle("collapsed");
+  cards.style.display = isCollapsed ? "none" : "flex";
 });
-document.getElementById("task-filter-person").addEventListener("change", renderTaskListFiltered);
-document.getElementById("task-filter-priority").addEventListener("change", renderTaskListFiltered);
 
 async function loadTasks() {
   const { data } = await supabase
@@ -2283,7 +2346,7 @@ async function loadTasks() {
   if (assignedSelect) assignedSelect.innerHTML = `<option value="">Sin asignar</option>${memberOptions}`;
 
   renderTasksToday();
-  renderTaskListFiltered();
+  renderKanbanBoard();
 }
 
 // ---------------- INIT ----------------
