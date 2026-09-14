@@ -1,6 +1,6 @@
 {
-  "name": "Finanzas del Hogar",
-  "short_name": "Finanzas",
+  "name": "MyHome",
+  "short_name": "MyHome",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0d1117",
