@@ -1674,10 +1674,12 @@ document.getElementById("form-shopping-item").addEventListener("submit", async (
   e.preventDefault();
   const name = document.getElementById("shopping-item-name").value.trim();
   const is_recurring = document.getElementById("shopping-item-recurring").checked;
+  const priceRaw = document.getElementById("shopping-item-price").value;
+  const estimated_price = priceRaw ? Number(priceRaw) : null;
   if (!name) return;
 
   const { error } = await supabase.from("shopping_list_items").insert({
-    household_id: currentHousehold.id, name, is_recurring,
+    household_id: currentHousehold.id, name, is_recurring, estimated_price,
   });
   if (error) { alert("Error agregando ítem: " + error.message); return; }
   e.target.reset();
@@ -1700,11 +1702,16 @@ async function loadShoppingList() {
   const pending = items.filter((i) => !i.is_purchased);
   const purchased = items.filter((i) => i.is_purchased);
 
+  const totalEstimate = pending.reduce((sum, i) => sum + (Number(i.estimated_price) || 0), 0);
+  document.getElementById("shopping-total-estimate").textContent = fmt(totalEstimate);
+
   const renderItem = (item) => `
     <div class="shopping-item ${item.is_purchased ? "purchased" : ""}">
       <input type="checkbox" data-shopping-id="${item.id}" data-recurring="${item.is_recurring}" ${item.is_purchased ? "checked" : ""} />
       <span class="shopping-name">${escapeHtml(item.name)}</span>
       ${item.is_recurring ? '<span class="recurring-badge">Recurrente</span>' : ""}
+      <input type="number" class="shopping-price-input" data-shopping-price-id="${item.id}"
+        value="${item.estimated_price != null ? item.estimated_price : ""}" placeholder="Precio est." step="1" />
       <button class="btn-danger" data-del-shopping="${item.id}">${icon("trash", 14)}</button>
     </div>`;
 
@@ -1715,6 +1722,15 @@ async function loadShoppingList() {
   document.getElementById("shopping-list-purchased").innerHTML = purchased.length
     ? purchased.map(renderItem).join("")
     : `<p class="muted">Nada comprado todavía.</p>`;
+
+  document.querySelectorAll("[data-shopping-price-id]").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const id = input.dataset.shoppingPriceId;
+      const value = input.value ? Number(input.value) : null;
+      await supabase.from("shopping_list_items").update({ estimated_price: value }).eq("id", id);
+      await loadShoppingList();
+    });
+  });
 
   document.querySelectorAll("[data-shopping-id]").forEach((cb) => {
     cb.addEventListener("change", async () => {
@@ -1727,11 +1743,13 @@ async function loadShoppingList() {
       }).eq("id", id);
 
       // Si es recurrente y se acaba de marcar como comprado, vuelve solo a la lista
+      // (con el mismo precio estimado, para no perder la referencia)
       if (nowPurchased && isRecurring) {
-        const { data: item } = await supabase.from("shopping_list_items").select("name").eq("id", id).single();
+        const { data: item } = await supabase.from("shopping_list_items").select("name, estimated_price").eq("id", id).single();
         if (item) {
           await supabase.from("shopping_list_items").insert({
             household_id: currentHousehold.id, name: item.name, is_recurring: true,
+            estimated_price: item.estimated_price,
           });
         }
       }
