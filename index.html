@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=18" />
+<link rel="stylesheet" href="css/style.css?v=19" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -386,6 +386,10 @@
       </form>
 
       <h3 class="section-title">Calendario</h3>
+      <div class="gcal-connect-bar" id="gcal-connect-bar">
+        <span id="gcal-status-text" class="muted">Revisando conexión con Google Calendar…</span>
+        <a id="gcal-connect-link" class="btn-ghost" style="display:none" target="_blank" rel="noopener">Conectar con Google Calendar</a>
+      </div>
       <div class="calendar-view-toggle">
         <button type="button" class="view-toggle-btn active" data-cal-view="month">Mes</button>
         <button type="button" class="view-toggle-btn" data-cal-view="week">Semana</button>
@@ -487,8 +491,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=18"></script>
-<script type="module" src="js/pdfParser.js?v=18"></script>
-<script type="module" src="js/app.js?v=18"></script>
+<script type="module" src="js/supabaseClient.js?v=19"></script>
+<script type="module" src="js/pdfParser.js?v=19"></script>
+<script type="module" src="js/app.js?v=19"></script>
 </body>
 </html>
