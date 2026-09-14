@@ -23,11 +23,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=34" />
+<link rel="stylesheet" href="css/style.css?v=35" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -55,6 +58,21 @@
       <button type="submit" class="btn-primary">Crear cuenta</button>
     </form>
 
+    <form id="forgot-form" class="auth-form" style="display:none">
+      <p class="muted" style="margin:0 0 4px">Te mandamos un link para crear una contraseña nueva.</p>
+      <input type="email" id="forgot-email" placeholder="Tu correo" required />
+      <button type="submit" class="btn-primary">Enviar link de recuperación</button>
+    </form>
+
+    <form id="reset-password-form" class="auth-form" style="display:none">
+      <p class="muted" style="margin:0 0 4px">Escribe tu nueva contraseña.</p>
+      <input type="password" id="reset-password-new" placeholder="Contraseña nueva (mín. 6 caracteres)" required minlength="6" />
+      <button type="submit" class="btn-primary">Guardar contraseña</button>
+    </form>
+
+    <button type="button" id="btn-forgot-password" class="auth-link-btn">¿Olvidaste tu contraseña?</button>
+    <button type="button" id="btn-back-to-login" class="auth-link-btn" style="display:none">Volver a iniciar sesión</button>
+
     <p id="auth-message" class="auth-message"></p>
   </div>
 </div>
@@ -81,6 +99,8 @@
       </div>
     </div>
   </header>
+
+  <div id="toast-container" class="toast-container"></div>
 
   <div class="drawer-overlay" id="drawer-overlay" style="display:none"></div>
   <nav class="drawer" id="drawer">
@@ -296,6 +316,10 @@
           <canvas id="chart-cc-categories"></canvas>
         </div>
       </div>
+
+      <h3 class="section-title">Presupuestos por categoría</h3>
+      <p class="muted">Define un límite mensual por categoría — la barra se pone roja si te pasas.</p>
+      <div id="budgets-list"></div>
     </section>
 
     <!-- AHORROS / PATRIMONIO -->
@@ -346,6 +370,10 @@
     <!-- HISTORIAL / REPORTES -->
     <section id="tab-historial" class="tab-panel">
       <h2>Historial de meses</h2>
+      <div class="inline-form">
+        <button id="btn-export-excel" class="btn-ghost">Exportar a Excel</button>
+        <button id="btn-export-pdf" class="btn-ghost">Exportar a PDF</button>
+      </div>
       <div class="table-scroll"><table class="data-table" id="table-history">
         <thead><tr><th>Mes</th><th>Ingresos</th><th>Gastos Fijos</th><th>Gastos Extra</th><th>Tarjeta</th><th>Ahorro</th></tr></thead>
         <tbody></tbody>
@@ -411,6 +439,15 @@
         <label class="event-time-field">
           <span>Hasta</span>
           <select id="event-end-time"></select>
+        </label>
+        <label class="event-time-field">
+          <span>Repetir</span>
+          <select id="event-recurrence">
+            <option value="none">No se repite</option>
+            <option value="daily">Diaria</option>
+            <option value="weekly">Semanal</option>
+            <option value="monthly">Mensual</option>
+          </select>
         </label>
         <button type="submit" class="btn-primary">Agregar</button>
       </form>
@@ -542,6 +579,10 @@
         <button id="btn-save-display-name" class="btn-ghost">Guardar</button>
       </div>
     </div>
+    <div class="modal-section">
+      <h4>Actividad reciente</h4>
+      <div id="activity-log-list" class="activity-log-list"></div>
+    </div>
     <button id="btn-close-household-modal" class="btn-ghost">Cerrar</button>
   </div>
 </div>
@@ -609,8 +650,36 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=34"></script>
-<script type="module" src="js/pdfParser.js?v=34"></script>
-<script type="module" src="js/app.js?v=34"></script>
+<!-- ============ TOUR DE BIENVENIDA (una sola vez) ============ -->
+<div id="onboarding-modal" class="modal" style="display:none">
+  <div class="modal-box">
+    <h3>Bienvenido a Finanzas del Hogar 👋</h3>
+    <div class="onboarding-step">
+      <strong>💰 Finanzas</strong>
+      <p class="muted">Ingresos, gastos, tarjeta de crédito, ahorros e historial — todo organizado por mes.</p>
+    </div>
+    <div class="onboarding-step">
+      <strong>📅 Planificación</strong>
+      <p class="muted">Un calendario compartido del hogar, con opción de sincronizarlo con Google Calendar.</p>
+    </div>
+    <div class="onboarding-step">
+      <strong>✅ Tareas</strong>
+      <p class="muted">Un tablero tipo kanban — arrastra las tarjetas entre columnas para ir avanzando.</p>
+    </div>
+    <div class="onboarding-step">
+      <strong>🛒 Lista de Compras</strong>
+      <p class="muted">Con inventario del hogar: cuando algo se acaba, se agrega solo a la lista.</p>
+    </div>
+    <div class="onboarding-step">
+      <strong>💬 Chat IA</strong>
+      <p class="muted">El globo azul abajo a la derecha — pregúntale sobre tus finanzas o pídele que agregue cosas por ti.</p>
+    </div>
+    <button id="btn-close-onboarding" class="btn-primary" style="width:100%; margin-top:10px">Entendido, empezar</button>
+  </div>
+</div>
+
+<script type="module" src="js/supabaseClient.js?v=35"></script>
+<script type="module" src="js/pdfParser.js?v=35"></script>
+<script type="module" src="js/app.js?v=35"></script>
 </body>
 </html>
