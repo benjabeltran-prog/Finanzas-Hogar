@@ -675,6 +675,31 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .shopping-price-input:hover { border-color: var(--border); }
 .shopping-price-input:focus { border-color: var(--accent); background: var(--panel-2); outline: none; }
 
+/* ---------- INVENTARIO DEL HOGAR ---------- */
+.inventory-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+.inventory-name { flex: 1; font-size: 0.92em; }
+.inventory-status-badge {
+  border: none;
+  border-radius: 12px;
+  padding: 5px 12px;
+  font-size: 0.78em;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.inventory-status-badge.status-ok { background: rgba(52,211,153,0.15); color: var(--green); }
+.inventory-status-badge.status-low { background: rgba(251,191,36,0.15); color: var(--yellow); }
+.inventory-status-badge.status-out { background: rgba(248,113,113,0.15); color: var(--red); }
+
 /* ---------- PLANIFICACIÓN / EVENTOS ---------- */
 .event-time-field {
   display: flex;
