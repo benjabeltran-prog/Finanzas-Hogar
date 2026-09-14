@@ -1523,6 +1523,36 @@ async function buildChatContext() {
   const { data: patrimonioRow } = await supabase
     .from("v_month_patrimonio").select("total_patrimonio").eq("month_id", currentMonth.id).single();
 
+  // Movimientos de tarjeta de TODOS los meses (no solo el seleccionado), para
+  // que el chat pueda responder preguntas sobre un comercio/ítem específico
+  // (ej: "cuánto gasté en VILLARRICA BORDERIO CLUB EIRL en agosto").
+  const { data: allMonths } = await supabase
+    .from("months").select("id, year, month").eq("household_id", currentHousehold.id);
+  const monthLabel = {};
+  (allMonths || []).forEach((m) => { monthLabel[m.id] = `${MONTH_NAMES[m.month - 1]} ${m.year}`; });
+
+  const { data: allStatements } = await supabase
+    .from("credit_card_statements").select("id, month_id").eq("household_id", currentHousehold.id);
+  const statementMonth = {};
+  (allStatements || []).forEach((s) => { statementMonth[s.id] = monthLabel[s.month_id]; });
+
+  let movimientosTarjeta = [];
+  const allStatementIds = (allStatements || []).map((s) => s.id);
+  if (allStatementIds.length) {
+    const { data: allTxs } = await supabase
+      .from("credit_card_transactions")
+      .select("statement_id, transaction_date, description, amount, category")
+      .in("statement_id", allStatementIds)
+      .order("transaction_date");
+    movimientosTarjeta = (allTxs || []).map((t) => ({
+      mes: statementMonth[t.statement_id],
+      fecha: t.transaction_date,
+      descripcion: t.description,
+      monto: Number(t.amount),
+      categoria: t.category,
+    }));
+  }
+
   return {
     mes_seleccionado: `${MONTH_NAMES[currentMonth.month - 1]} ${currentMonth.year}`,
     resumen_por_mes: (summaries || []).map((s) => ({
@@ -1535,6 +1565,7 @@ async function buildChatContext() {
     })),
     gasto_por_categoria_mes_seleccionado: categoryTotals,
     patrimonio_cuentas_mes_seleccionado: patrimonioRow ? Number(patrimonioRow.total_patrimonio) : null,
+    movimientos_tarjeta_todos_los_meses: movimientosTarjeta,
   };
 }
 
