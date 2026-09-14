@@ -2142,33 +2142,6 @@ function computeNextDueDate(dueDateStr, recurrence) {
   return d.toISOString().slice(0, 10);
 }
 
-async function toggleTaskComplete(task) {
-  const nowCompleted = !task.is_completed;
-  const newStatus = nowCompleted ? "done" : "todo";
-  await supabase.from("household_tasks").update({
-    is_completed: nowCompleted,
-    status: newStatus,
-    completed_at: nowCompleted ? new Date().toISOString() : null,
-  }).eq("id", task.id);
-
-  // Si es recurrente y se acaba de completar, se crea la próxima instancia
-  if (nowCompleted && task.recurrence !== "none") {
-    const nextDate = computeNextDueDate(task.due_date, task.recurrence);
-    await supabase.from("household_tasks").insert({
-      household_id: currentHousehold.id,
-      title: task.title,
-      description: task.description,
-      assigned_to: task.assigned_to,
-      due_date: nextDate,
-      priority: task.priority,
-      recurrence: task.recurrence,
-      status: "todo",
-      created_by: currentUser.id,
-    });
-  }
-  await loadTasks();
-}
-
 let taskColumns = []; // [{id, household_id, name, position}]
 let collapsedColumnIds = new Set();
 
