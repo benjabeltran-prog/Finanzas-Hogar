@@ -6,7 +6,6 @@
     </linearGradient>
   </defs>
   <rect width="32" height="32" rx="8" fill="url(#bg)"/>
-  <rect x="8" y="17" width="4" height="8" rx="1.5" fill="#ffffff" opacity="0.55"/>
-  <rect x="14" y="12" width="4" height="13" rx="1.5" fill="#ffffff" opacity="0.8"/>
-  <rect x="20" y="7" width="4" height="18" rx="1.5" fill="#ffffff"/>
+  <path d="M16 6.5 L25 15 V25 A1 1 0 0 1 24 26 H8 A1 1 0 0 1 7 25 V15 Z" fill="#ffffff"/>
+  <rect x="13" y="19" width="6" height="7" rx="1" fill="url(#bg)"/>
 </svg>
