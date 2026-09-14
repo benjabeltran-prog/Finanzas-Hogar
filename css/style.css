@@ -829,6 +829,69 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .amount-edit-input:hover { border-color: var(--border); }
 .amount-edit-input:focus { border-color: var(--accent); background: var(--panel-2); outline: none; }
 
+/* ---------- TAREAS DEL HOGAR ---------- */
+.task-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.filter-group { display: flex; gap: 4px; }
+.task-filters select { font-size: 0.85em; }
+
+.task-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  transition: border-color 0.15s ease, opacity 0.15s ease;
+}
+.task-card.priority-alta { border-left-color: var(--red); }
+.task-card.priority-media { border-left-color: var(--yellow); }
+.task-card.priority-baja { border-left-color: var(--green); }
+.task-card.completed { opacity: 0.55; }
+.task-card.completed .task-title { text-decoration: line-through; }
+.task-check {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.task-info { flex: 1; min-width: 0; }
+.task-title { font-weight: 600; }
+.task-desc { font-size: 0.82em; color: var(--muted); margin-top: 2px; }
+.task-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  font-size: 0.75em;
+}
+.task-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.task-badge.priority-alta { background: rgba(248,113,113,0.14); color: var(--red); }
+.task-badge.priority-media { background: rgba(251,191,36,0.14); color: var(--yellow); }
+.task-badge.priority-baja { background: rgba(52,211,153,0.14); color: var(--green); }
+.task-badge.overdue { background: rgba(248,113,113,0.18); color: var(--red); font-weight: 600; }
+.task-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+.task-actions button { padding: 5px 7px; }
+.filter-group .filter-chip::before { display: none; }
+.filter-group .filter-chip { padding: 6px 14px; }
+
 /* ---------- CHAT IA ---------- */
 .chat-log {
   height: 380px;
