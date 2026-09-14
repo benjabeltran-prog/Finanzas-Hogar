@@ -519,6 +519,46 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .card-clickable, .category-row.card-clickable { cursor: pointer; }
 .card-clickable:active { transform: scale(0.98); }
 
+/* ---------- DASHBOARD: HOY + ALERTAS ---------- */
+.dashboard-today-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.dashboard-today-widget {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.dashboard-today-widget:hover { transform: translateY(-2px); border-color: rgba(79,140,255,0.35); }
+.dashboard-today-widget h4 { margin: 0 0 10px; font-size: 0.85em; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.dashboard-mini-item {
+  font-size: 0.88em;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dashboard-mini-item:last-child { border-bottom: none; }
+
+.dashboard-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.88em;
+  font-weight: 600;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.dashboard-alert.danger { background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+.dashboard-alert.warning { background: rgba(251,191,36,0.12); color: var(--yellow); border: 1px solid rgba(251,191,36,0.3); }
+
 /* ---------- SELECTOR DE MODO DE HOGAR ---------- */
 .mode-choice-group { display: flex; gap: 10px; margin: 10px 0 14px; flex-wrap: wrap; }
 .mode-choice {
