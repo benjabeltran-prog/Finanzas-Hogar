@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=33" />
+<link rel="stylesheet" href="css/style.css?v=34" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -382,6 +382,14 @@
         <button id="btn-clear-purchased" class="btn-ghost">Vaciar comprados</button>
       </div>
       <div id="shopping-list-purchased"></div>
+
+      <h3 class="section-title">Inventario del hogar</h3>
+      <p class="muted">Marca el estado de cada producto — al quedar "Agotado" se agrega solo a la lista de compras. Al comprarlo y marcarlo arriba, vuelve a "En stock" solo.</p>
+      <form id="form-inventory-item" class="inline-form">
+        <input type="text" id="inventory-item-name" placeholder="Ej: Arroz, Papel higiénico" required style="flex:1" />
+        <button type="submit" class="btn-primary">Agregar</button>
+      </form>
+      <div id="inventory-list"></div>
     </section>
 
     <!-- PLANIFICACIÓN DEL HOGAR -->
@@ -601,8 +609,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=33"></script>
-<script type="module" src="js/pdfParser.js?v=33"></script>
-<script type="module" src="js/app.js?v=33"></script>
+<script type="module" src="js/supabaseClient.js?v=34"></script>
+<script type="module" src="js/pdfParser.js?v=34"></script>
+<script type="module" src="js/app.js?v=34"></script>
 </body>
 </html>
