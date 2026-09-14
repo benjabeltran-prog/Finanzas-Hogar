@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=19" />
+<link rel="stylesheet" href="css/style.css?v=20" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -376,11 +376,11 @@
         </label>
         <label class="event-time-field">
           <span>Desde</span>
-          <input type="time" id="event-start-time" required />
+          <select id="event-start-time" required></select>
         </label>
         <label class="event-time-field">
           <span>Hasta</span>
-          <input type="time" id="event-end-time" />
+          <select id="event-end-time"></select>
         </label>
         <button type="submit" class="btn-primary">Agregar</button>
       </form>
@@ -491,8 +491,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=19"></script>
-<script type="module" src="js/pdfParser.js?v=19"></script>
-<script type="module" src="js/app.js?v=19"></script>
+<script type="module" src="js/supabaseClient.js?v=20"></script>
+<script type="module" src="js/pdfParser.js?v=20"></script>
+<script type="module" src="js/app.js?v=20"></script>
 </body>
 </html>
