@@ -1,9 +1,13 @@
-# 💰 Finanzas del Hogar
+# 🏠 MyHome
 
-App web para administrar las finanzas de un hogar con dos ingresos: ingresos, gastos
-fijos, gastos extra, desglose automático de cartola de tarjeta de crédito (Santander),
-dashboard consolidado, historial mes a mes, y soporte multi-hogar (tipo SaaS: cualquier
-persona puede crear su cuenta y su propio hogar, o unirse a uno existente con un código).
+App web para administrar todo lo del hogar: finanzas (ingresos, gastos fijos, gastos
+extra, desglose automático de cartola de tarjeta de crédito Santander), planificación
+(calendario compartido con sincronización a Google Calendar), tareas (tablero kanban
+con arrastrar y soltar), lista de compras con inventario del hogar, un chat con IA
+(Gemini) que puede responder preguntas y agregar cosas por voz o texto, e integración
+con Alexa. Soporta multi-hogar tipo SaaS (cualquier persona puede crear su cuenta y su
+propio hogar, o unirse a uno existente con un código), con modo "en conjunto" o
+"separado" (ingresos privados/compartidos, gastos con responsable asignado).
 
 Stack: HTML/CSS/JS plano (sin build) + **Supabase** (Postgres, Auth, Storage) + Chart.js
 + PDF.js. Se despliega gratis en **GitHub Pages**.
