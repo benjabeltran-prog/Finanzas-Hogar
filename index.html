@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=30" />
+<link rel="stylesheet" href="css/style.css?v=31" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -124,22 +124,22 @@
     <nav class="sidebar">
       <button class="side-tab active" data-tab="dashboard" data-icon="dashboard">Dashboard</button>
 
-      <div class="side-group-label">Registrar</div>
+      <div class="side-group-label">Finanzas</div>
       <button class="side-tab" data-tab="ingresos" data-icon="ingresos">Ingresos</button>
       <button class="side-tab" data-tab="fijos" data-icon="fijos">Gastos Fijos</button>
       <button class="side-tab" data-tab="extra" data-icon="extra">Gastos Extra</button>
       <button class="side-tab" data-tab="tarjeta" data-icon="tarjeta">Tarjeta de Crédito</button>
-
-      <div class="side-group-label">Patrimonio</div>
       <button class="side-tab" data-tab="ahorros" data-icon="ahorros">Ahorros</button>
-
-      <div class="side-group-label">Reportes</div>
       <button class="side-tab" data-tab="historial" data-icon="historial">Historial</button>
 
-      <div class="side-group-label">Hogar</div>
-      <button class="side-tab" data-tab="compras" data-icon="compras">Lista de Compras</button>
+      <div class="side-group-label">Planificación</div>
       <button class="side-tab" data-tab="planificacion" data-icon="planificacion">Planificación</button>
+
+      <div class="side-group-label">Tareas</div>
       <button class="side-tab" data-tab="tareas" data-icon="tareas">Tareas</button>
+
+      <div class="side-group-label">Lista de Compras</div>
+      <button class="side-tab" data-tab="compras" data-icon="compras">Lista de Compras</button>
     </nav>
 
     <main class="content">
@@ -150,6 +150,24 @@
         <button id="btn-prev-month" class="btn-ghost timeline-arrow" title="Mes anterior">‹</button>
         <div class="timeline-strip" id="timeline-strip"></div>
         <button id="btn-next-month" class="btn-ghost timeline-arrow" title="Mes siguiente">›</button>
+      </div>
+
+      <div id="dashboard-alerts"></div>
+
+      <h3 class="section-title">Hoy en tu hogar</h3>
+      <div class="dashboard-today-grid">
+        <div class="dashboard-today-widget card-clickable" data-goto="planificacion">
+          <h4>Actividades de hoy</h4>
+          <div id="dashboard-today-events"></div>
+        </div>
+        <div class="dashboard-today-widget card-clickable" data-goto="tareas">
+          <h4>Tareas de hoy</h4>
+          <div id="dashboard-today-tasks"></div>
+        </div>
+        <div class="dashboard-today-widget card-clickable" data-goto="compras">
+          <h4>Lista de compras</h4>
+          <div id="dashboard-shopping-summary"></div>
+        </div>
       </div>
 
       <div class="narrative-box" id="monthly-narrative"></div>
@@ -581,8 +599,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=30"></script>
-<script type="module" src="js/pdfParser.js?v=30"></script>
-<script type="module" src="js/app.js?v=30"></script>
+<script type="module" src="js/supabaseClient.js?v=31"></script>
+<script type="module" src="js/pdfParser.js?v=31"></script>
+<script type="module" src="js/app.js?v=31"></script>
 </body>
 </html>
