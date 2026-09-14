@@ -815,6 +815,19 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 }
 .week-event-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .category-select { font-size: 0.85em; padding: 4px 6px; max-width: 160px; }
+.amount-edit-input {
+  width: 100px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 0.9em;
+  color: var(--text);
+  font-family: inherit;
+  text-align: right;
+}
+.amount-edit-input:hover { border-color: var(--border); }
+.amount-edit-input:focus { border-color: var(--accent); background: var(--panel-2); outline: none; }
 
 /* ---------- CHAT IA ---------- */
 .chat-log {
