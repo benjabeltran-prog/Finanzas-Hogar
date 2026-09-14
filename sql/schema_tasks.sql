@@ -22,3 +22,8 @@ create table if not exists household_tasks (
 alter table household_tasks enable row level security;
 create policy "household_tasks_all" on household_tasks for all
   using (is_member_of(household_id)) with check (is_member_of(household_id));
+
+-- Estado tipo kanban (reemplaza is_completed como fuente de verdad,
+-- pero dejamos is_completed/completed_at por compatibilidad).
+alter table household_tasks add column if not exists status text not null default 'todo' check (status in ('todo', 'in_progress', 'done'));
+update household_tasks set status = 'done' where is_completed = true and status = 'todo';
