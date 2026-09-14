@@ -2288,7 +2288,18 @@ async function ensureDefaultColumns() {
   taskColumns = created || [];
 }
 
-document.getElementById("btn-add-column").addEventListener("click", async () => {
+function openColumnModal() {
+  document.getElementById("new-column-name").value = "";
+  document.getElementById("column-modal").style.display = "flex";
+}
+function closeColumnModal() {
+  document.getElementById("column-modal").style.display = "none";
+}
+document.getElementById("btn-open-add-column").addEventListener("click", openColumnModal);
+document.getElementById("btn-cancel-column").addEventListener("click", closeColumnModal);
+
+document.getElementById("form-column").addEventListener("submit", async (e) => {
+  e.preventDefault();
   const input = document.getElementById("new-column-name");
   const name = input.value.trim();
   if (!name) return;
@@ -2297,9 +2308,20 @@ document.getElementById("btn-add-column").addEventListener("click", async () => 
     household_id: currentHousehold.id, name, position: maxPos + 1,
   });
   if (error) { alert("Error agregando columna: " + error.message); return; }
-  input.value = "";
+  closeColumnModal();
   await loadTasks();
 });
+
+async function persistColumnOrder() {
+  const board = document.getElementById("kanban-board");
+  const columnEls = [...board.querySelectorAll(".kanban-column")];
+  for (let idx = 0; idx < columnEls.length; idx++) {
+    const id = columnEls[idx].dataset.columnId;
+    await supabase.from("task_columns").update({ position: idx }).eq("id", id);
+    const col = taskColumns.find((c) => c.id === id);
+    if (col) col.position = idx;
+  }
+}
 
 async function deleteColumn(columnId) {
   const hasTasksHere = allHouseholdTasks.some((t) => t.column_id === columnId);
@@ -2326,10 +2348,11 @@ function renderKanbanBoard() {
     const isCollapsed = collapsedColumnIds.has(col.id);
     return `
       <div class="kanban-column ${isCollapsed ? "collapsed" : ""}" data-column-id="${col.id}">
-        <div class="kanban-column-header" data-toggle-column="${col.id}">
-          <span>${escapeHtml(col.name)}</span>
-          <span class="kanban-count">${columnTasks.length}</span>
-          <span class="kanban-toggle-icon">▾</span>
+        <div class="kanban-column-header">
+          <span class="kanban-drag-handle" title="Arrastrar para reordenar columnas">⠿</span>
+          <span class="kanban-column-title" data-toggle-column="${col.id}">${escapeHtml(col.name)}</span>
+          <span class="kanban-count" data-toggle-column="${col.id}">${columnTasks.length}</span>
+          <span class="kanban-toggle-icon" data-toggle-column="${col.id}">▾</span>
           <button type="button" class="kanban-column-delete" data-delete-column="${col.id}" title="Eliminar columna">✕</button>
         </div>
         <div class="kanban-cards" data-column-id="${col.id}" style="${isCollapsed ? "display:none" : ""}">
@@ -2368,6 +2391,13 @@ function renderKanbanBoard() {
         if (taskId && newColumnId) moveTaskToColumn(taskId, newColumnId);
       },
     });
+  });
+
+  // Arrastrar columnas completas (tomando el tirador ⠿) para reordenarlas
+  new Sortable(board, {
+    handle: ".kanban-drag-handle",
+    animation: 150,
+    onEnd: () => persistColumnOrder(),
   });
 }
 
