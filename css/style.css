@@ -963,6 +963,20 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   .kanban-column { width: 100%; }
 }
 
+.kanban-column-delete {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9em;
+  padding: 0 2px;
+}
+.kanban-column-delete:hover { color: var(--red); }
+.kanban-cards.sortable-ghost { opacity: 0.4; }
+.kanban-card.sortable-drag { cursor: grabbing; }
+.kanban-card { cursor: grab; }
+.kanban-cards { min-height: 44px; }
+
 /* ---------- CHAT IA ---------- */
 .chat-log {
   height: 380px;
