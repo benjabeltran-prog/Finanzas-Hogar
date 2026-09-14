@@ -35,3 +35,6 @@ create table if not exists household_events (
 alter table household_events enable row level security;
 create policy "household_events_all" on household_events for all
   using (is_member_of(household_id)) with check (is_member_of(household_id));
+
+-- Precio estimado (opcional, editable) por ítem de la lista de compras
+alter table shopping_list_items add column if not exists estimated_price numeric;
