@@ -279,6 +279,46 @@ async function selectHousehold(id) {
   await loadEvents();
   await refreshGoogleCalendarStatus();
   await loadTasks();
+  subscribeToRealtimeChanges();
+}
+
+// ============================================================
+// ACTUALIZACIÓN EN TIEMPO REAL (Realtime)
+// Así, cuando Alexa (o el Chat IA, u otra persona) agrega algo,
+// se ve solo en la app sin tener que refrescar la página.
+// ============================================================
+let realtimeChannel = null;
+
+function subscribeToRealtimeChanges() {
+  if (realtimeChannel) {
+    supabase.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+  if (!currentHousehold) return;
+
+  realtimeChannel = supabase
+    .channel(`household-${currentHousehold.id}-changes`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "shopping_list_items", filter: `household_id=eq.${currentHousehold.id}` },
+      () => loadShoppingList()
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "household_events", filter: `household_id=eq.${currentHousehold.id}` },
+      () => loadEvents()
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "extra_expenses", filter: `household_id=eq.${currentHousehold.id}` },
+      () => { loadExtraExpenses(); loadDashboard(); loadHistory(); }
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "incomes", filter: `household_id=eq.${currentHousehold.id}` },
+      () => { loadIncomes(); loadDashboard(); loadHistory(); }
+    )
+    .subscribe();
 }
 
 // ---------------- MODO DE HOGAR (conjunto / separado) ----------------
