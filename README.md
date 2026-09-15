@@ -1,4 +1,4 @@
-# 🏠 MyHome
+# 👨‍👩‍👧‍👦 Fambase
 
 App web para administrar todo lo del hogar: finanzas (ingresos, gastos fijos, gastos
 extra, desglose automático de cartola de tarjeta de crédito Santander), planificación
