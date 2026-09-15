@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=41" />
+<link rel="stylesheet" href="css/style.css?v=42" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -144,22 +144,46 @@
     <nav class="sidebar">
       <button class="side-tab active" data-tab="dashboard" data-icon="dashboard">Dashboard</button>
 
-      <div class="side-group-label">Finanzas</div>
-      <button class="side-tab" data-tab="ingresos" data-icon="ingresos">Ingresos</button>
-      <button class="side-tab" data-tab="fijos" data-icon="fijos">Gastos Fijos</button>
-      <button class="side-tab" data-tab="extra" data-icon="extra">Gastos Extra</button>
-      <button class="side-tab" data-tab="tarjeta" data-icon="tarjeta">Tarjeta de Crédito</button>
-      <button class="side-tab" data-tab="ahorros" data-icon="ahorros">Ahorros</button>
-      <button class="side-tab" data-tab="historial" data-icon="historial">Historial</button>
+      <div class="side-group" data-side-group="finanzas">
+        <button type="button" class="side-group-label" data-group-toggle="finanzas">
+          <span>Finanzas</span><span class="side-group-arrow">▾</span>
+        </button>
+        <div class="side-group-items" id="side-group-finanzas">
+          <button class="side-tab" data-tab="ingresos" data-icon="ingresos">Ingresos</button>
+          <button class="side-tab" data-tab="fijos" data-icon="fijos">Gastos Fijos</button>
+          <button class="side-tab" data-tab="extra" data-icon="extra">Gastos Extra</button>
+          <button class="side-tab" data-tab="tarjeta" data-icon="tarjeta">Tarjeta de Crédito</button>
+          <button class="side-tab" data-tab="ahorros" data-icon="ahorros">Ahorros</button>
+          <button class="side-tab" data-tab="historial" data-icon="historial">Historial</button>
+        </div>
+      </div>
 
-      <div class="side-group-label">Planificación</div>
-      <button class="side-tab" data-tab="planificacion" data-icon="planificacion">Planificación</button>
+      <div class="side-group" data-side-group="planificacion">
+        <button type="button" class="side-group-label" data-group-toggle="planificacion">
+          <span>Planificación</span><span class="side-group-arrow">▾</span>
+        </button>
+        <div class="side-group-items" id="side-group-planificacion">
+          <button class="side-tab" data-tab="planificacion" data-icon="planificacion">Planificación</button>
+        </div>
+      </div>
 
-      <div class="side-group-label">Tareas</div>
-      <button class="side-tab" data-tab="tareas" data-icon="tareas">Tareas</button>
+      <div class="side-group" data-side-group="tareas">
+        <button type="button" class="side-group-label" data-group-toggle="tareas">
+          <span>Tareas</span><span class="side-group-arrow">▾</span>
+        </button>
+        <div class="side-group-items" id="side-group-tareas">
+          <button class="side-tab" data-tab="tareas" data-icon="tareas">Tareas</button>
+        </div>
+      </div>
 
-      <div class="side-group-label">Lista de Compras</div>
-      <button class="side-tab" data-tab="compras" data-icon="compras">Lista de Compras</button>
+      <div class="side-group" data-side-group="compras">
+        <button type="button" class="side-group-label" data-group-toggle="compras">
+          <span>Lista de Compras</span><span class="side-group-arrow">▾</span>
+        </button>
+        <div class="side-group-items" id="side-group-compras">
+          <button class="side-tab" data-tab="compras" data-icon="compras">Lista de Compras</button>
+        </div>
+      </div>
     </nav>
 
     <main class="content">
@@ -319,13 +343,27 @@
         </div>
       </div>
 
-      <h3 class="section-title">Presupuestos por categoría</h3>
-      <p class="muted">Define un límite mensual por categoría — la barra se pone roja si te pasas.</p>
-      <div id="budgets-list"></div>
+      <div class="collapsible-section">
+        <button type="button" class="collapsible-header" data-collapsible-toggle="budgets">
+          <span>Presupuestos por categoría</span>
+          <span class="collapsible-icon">▾</span>
+        </button>
+        <div class="collapsible-content" id="collapsible-budgets" style="display:none">
+          <p class="muted">Define un límite mensual por categoría — la barra se pone roja si te pasas.</p>
+          <div id="budgets-list"></div>
+        </div>
+      </div>
 
-      <h3 class="section-title">Suscripciones detectadas</h3>
-      <p class="muted">Comercios que se repiten mes a mes en tu tarjeta — te avisamos si el monto subió.</p>
-      <div id="subscriptions-list"></div>
+      <div class="collapsible-section">
+        <button type="button" class="collapsible-header" data-collapsible-toggle="subscriptions">
+          <span>Suscripciones detectadas</span>
+          <span class="collapsible-icon">▾</span>
+        </button>
+        <div class="collapsible-content" id="collapsible-subscriptions" style="display:none">
+          <p class="muted">Comercios que se repiten mes a mes en tu tarjeta — te avisamos si el monto subió.</p>
+          <div id="subscriptions-list"></div>
+        </div>
+      </div>
     </section>
 
     <!-- AHORROS / PATRIMONIO -->
@@ -712,8 +750,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=41"></script>
-<script type="module" src="js/pdfParser.js?v=41"></script>
-<script type="module" src="js/app.js?v=41"></script>
+<script type="module" src="js/supabaseClient.js?v=42"></script>
+<script type="module" src="js/pdfParser.js?v=42"></script>
+<script type="module" src="js/app.js?v=42"></script>
 </body>
 </html>
