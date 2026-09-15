@@ -2090,8 +2090,6 @@ document.getElementById("chat-photo-input").addEventListener("change", async (e)
   renderChat();
   await sendChatRequest({ image_base64: base64, image_mime_type: file.type || "image/jpeg" });
 });
-  renderChat();
-});
 
 // ============================================================
 // LISTA DE COMPRAS
