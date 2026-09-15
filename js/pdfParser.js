@@ -167,6 +167,7 @@ const CATEGORY_KEYWORDS = {
   Vestuario: ["falabella", "paris", "ripley", "h&m", "zara"],
   Entretenimiento: ["cine", "cines", "casino", "juegos", "games"],
   Servicios: ["aguas", "luz", "gas natural", "movistar", "entel", "wom", "claro", "internet"],
+  Deporte: ["gimnasio", "gym", "sportlife", "pacific fitness", "smartfit", "smart fit", "energy fitness", "adidas", "nike", "deportes"],
 };
 
 function guessCategory(desc) {
