@@ -489,14 +489,28 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   align-self: flex-start;
 }
 .side-group-label {
-  margin: 20px 10px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 20px 0 6px;
+  padding: 6px 10px;
   font-size: 0.7em;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
 }
-.side-group-label:first-of-type { margin-top: 4px; }
+.side-group-label:hover { background: var(--panel-2); color: var(--text); }
+.side-group:first-of-type .side-group-label { margin-top: 4px; }
+.side-group-arrow { transition: transform 0.15s ease; }
+.side-group-items { display: flex; flex-direction: column; }
+.side-group-items.collapsed { display: none; }
+.side-group-label.collapsed .side-group-arrow { transform: rotate(-90deg); }
 .side-tab {
   display: block;
   width: 100%;
@@ -571,6 +585,8 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   }
   .side-group-label { display: none; }
+  .side-group, .side-group-items { display: contents; }
+  .side-group-items.collapsed { display: contents; }
   .side-tab {
     flex-direction: column;
     align-items: center;
@@ -717,6 +733,26 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .recipe-name { font-weight: 600; margin-bottom: 4px; }
 .recipe-ingredients { font-size: 0.82em; color: var(--muted); white-space: pre-line; margin-bottom: 8px; }
 .recipe-actions { display: flex; gap: 8px; }
+
+.collapsible-section { margin-bottom: 10px; }
+.collapsible-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.95em;
+  color: var(--text);
+}
+.collapsible-header:hover { border-color: var(--accent); }
+.collapsible-icon { transition: transform 0.15s ease; color: var(--muted); }
+.collapsible-header.open .collapsible-icon { transform: rotate(180deg); }
+.collapsible-content { padding: 14px 4px 4px; }
 
 .chat-photo-btn {
   width: 38px;
