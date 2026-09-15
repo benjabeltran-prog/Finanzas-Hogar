@@ -276,6 +276,7 @@ async function selectHousehold(id) {
   await loadMonths();
   await loadShoppingList();
   await loadInventory();
+  await loadRecipes();
   await loadEvents();
   await refreshGoogleCalendarStatus();
   await loadTasks();
@@ -1206,11 +1207,66 @@ async function loadDashboard() {
   await loadDashboardOverview();
 }
 
+// ============================================================
+// PROYECCIÓN DE FIN DE MES
+// Solo se muestra cuando el mes seleccionado es el mes real actual
+// (no tiene sentido "proyectar" un mes ya cerrado o futuro).
+// ============================================================
+async function loadMonthProjection() {
+  const el = document.getElementById("dashboard-projection");
+  if (!el || !currentMonth) return;
+
+  const now = new Date();
+  const isCurrentRealMonth = currentMonth.year === now.getFullYear() && currentMonth.month === now.getMonth() + 1;
+  if (!isCurrentRealMonth) { el.style.display = "none"; return; }
+
+  const diaHoy = now.getDate();
+  const diasEnMes = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const todayIso = todayStr();
+
+  const [{ data: incomes }, { data: fixed }, { data: extraSoFar }, { data: statements }] = await Promise.all([
+    supabase.from("incomes").select("amount").eq("month_id", currentMonth.id),
+    supabase.from("fixed_expenses").select("amount").eq("month_id", currentMonth.id),
+    supabase.from("extra_expenses").select("amount").eq("month_id", currentMonth.id).lte("expense_date", todayIso),
+    supabase.from("credit_card_statements").select("id").eq("month_id", currentMonth.id),
+  ]);
+
+  const totalIngresos = (incomes || []).reduce((s, i) => s + Number(i.amount), 0);
+  const totalFijos = (fixed || []).reduce((s, f) => s + Number(f.amount), 0);
+  const extraGastadoHasta = (extraSoFar || []).reduce((s, e) => s + Number(e.amount), 0);
+
+  let tarjetaGastadaHasta = 0;
+  const statementIds = (statements || []).map((s) => s.id);
+  if (statementIds.length) {
+    const { data: txs } = await supabase
+      .from("credit_card_transactions").select("amount, transaction_date")
+      .in("statement_id", statementIds).lte("transaction_date", todayIso);
+    tarjetaGastadaHasta = (txs || []).reduce((s, t) => s + Number(t.amount), 0);
+  }
+
+  const variableGastadoHasta = extraGastadoHasta + tarjetaGastadaHasta;
+  const promedioDiario = diaHoy > 0 ? variableGastadoHasta / diaHoy : 0;
+  const variableProyectado = promedioDiario * diasEnMes;
+  const ahorroProyectado = totalIngresos - totalFijos - variableProyectado;
+
+  el.style.display = "block";
+  el.innerHTML = `
+    <div class="projection-card">
+      <div>
+        <div class="projection-label">Proyección de ahorro a fin de mes</div>
+        <div class="projection-value" style="color:${ahorroProyectado >= 0 ? "var(--green)" : "var(--red)"}">${fmt(ahorroProyectado)}</div>
+        <div class="projection-detail">Según tu ritmo de gasto variable de los últimos ${diaHoy} día(s) de ${diasEnMes}.</div>
+      </div>
+    </div>`;
+}
+
 async function loadDashboardOverview() {
   const today = todayStr();
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+
+  await loadMonthProjection();
 
   // --- Actividades de hoy ---
   const { data: todayEvents } = await supabase
@@ -1697,6 +1753,74 @@ async function loadCategoryBreakdown() {
   }
 
   await loadBudgets(totals);
+  await loadSubscriptions();
+}
+
+// ============================================================
+// DETECCIÓN DE SUSCRIPCIONES RECURRENTES
+// Comercios que se repiten en 3+ meses distintos con montos
+// parecidos — y avisa si el último monto subió respecto al anterior.
+// ============================================================
+async function loadSubscriptions() {
+  const el = document.getElementById("subscriptions-list");
+  if (!el) return;
+
+  const { data: statements } = await supabase
+    .from("credit_card_statements").select("id, month_id").eq("household_id", currentHousehold.id);
+  const statementIds = (statements || []).map((s) => s.id);
+  if (!statementIds.length) { el.innerHTML = `<p class="muted">Todavía no hay suficientes cartolas para detectar patrones.</p>`; return; }
+
+  const statementToMonthId = {};
+  (statements || []).forEach((s) => { statementToMonthId[s.id] = s.month_id; });
+
+  const { data: allMonths } = await supabase
+    .from("months").select("id, year, month").eq("household_id", currentHousehold.id);
+  const monthById = {};
+  (allMonths || []).forEach((m) => { monthById[m.id] = m; });
+
+  const { data: txs } = await supabase
+    .from("credit_card_transactions").select("description, amount, statement_id, transaction_date")
+    .in("statement_id", statementIds);
+
+  // Agrupar por nombre exacto de comercio
+  const byMerchant = {};
+  (txs || []).forEach((t) => {
+    const key = t.description.trim().toUpperCase();
+    if (!byMerchant[key]) byMerchant[key] = [];
+    const m = monthById[statementToMonthId[t.statement_id]];
+    byMerchant[key].push({ amount: Number(t.amount), date: t.transaction_date, monthKey: m ? `${m.year}-${m.month}` : t.transaction_date });
+  });
+
+  const subscriptions = Object.entries(byMerchant)
+    .map(([name, rows]) => {
+      const distinctMonths = new Set(rows.map((r) => r.monthKey));
+      if (distinctMonths.size < 3) return null;
+      const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
+      const last = sorted[sorted.length - 1];
+      const prev = sorted[sorted.length - 2];
+      return {
+        name,
+        meses: distinctMonths.size,
+        ultimoMonto: last.amount,
+        subioDe: prev && prev.amount < last.amount ? prev.amount : null,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.meses - a.meses);
+
+  el.innerHTML = subscriptions.length
+    ? subscriptions.map((s) => `
+      <div class="subscription-row">
+        <div>
+          <div class="subscription-name">${escapeHtml(s.name)}</div>
+          <div class="subscription-meta">Se repite en ${s.meses} meses distintos</div>
+        </div>
+        <div style="text-align:right">
+          <div>${fmt(s.ultimoMonto)}</div>
+          ${s.subioDe ? `<div class="subscription-price-change">Subió desde ${fmt(s.subioDe)}</div>` : ""}
+        </div>
+      </div>`).join("")
+    : `<p class="muted">No se detectaron suscripciones recurrentes todavía.</p>`;
 }
 
 // ============================================================
@@ -1913,22 +2037,13 @@ async function buildChatContext() {
   };
 }
 
-document.getElementById("form-chat").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const input = document.getElementById("chat-input");
-  const question = input.value.trim();
-  if (!question) return;
-  input.value = "";
-
-  chatMessages.push({ role: "user", text: question });
-  renderChat();
+async function sendChatRequest(body) {
   chatMessages.push({ role: "assistant", text: "Pensando…", pending: true });
   renderChat();
-
   try {
     const context = await buildChatContext();
     const { data, error } = await supabase.functions.invoke("ai-chat", {
-      body: { question, context },
+      body: { ...body, context },
     });
 
     chatMessages.pop();
@@ -1944,6 +2059,37 @@ document.getElementById("form-chat").addEventListener("submit", async (e) => {
     chatMessages.pop();
     chatMessages.push({ role: "assistant", text: "Error de conexión: " + err.message });
   }
+  renderChat();
+}
+
+document.getElementById("form-chat").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = document.getElementById("chat-input");
+  const question = input.value.trim();
+  if (!question) return;
+  input.value = "";
+
+  chatMessages.push({ role: "user", text: question });
+  renderChat();
+  await sendChatRequest({ question });
+});
+
+document.getElementById("chat-photo-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  chatMessages.push({ role: "user", text: "Foto de boleta enviada" });
+  renderChat();
+  await sendChatRequest({ image_base64: base64, image_mime_type: file.type || "image/jpeg" });
+});
   renderChat();
 });
 
@@ -2053,6 +2199,75 @@ async function loadShoppingList() {
     btn.addEventListener("click", async () => {
       await supabase.from("shopping_list_items").delete().eq("id", btn.dataset.delShopping);
       await loadShoppingList();
+    });
+  });
+}
+
+// ============================================================
+// PLANIFICADOR DE COMIDAS (recetas → lista de compras)
+// ============================================================
+document.getElementById("form-recipe").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("recipe-name").value.trim();
+  const ingredients = document.getElementById("recipe-ingredients").value.trim();
+  if (!name || !ingredients) return;
+
+  const { error } = await supabase.from("recipes").insert({
+    household_id: currentHousehold.id, name, ingredients,
+  });
+  if (error) { showToast("Error guardando la receta: " + error.message); return; }
+  e.target.reset();
+  await loadRecipes();
+});
+
+async function addRecipeIngredientsToShoppingList(recipe) {
+  const lines = recipe.ingredients.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return;
+
+  const { data: existingPending } = await supabase
+    .from("shopping_list_items").select("name").eq("household_id", currentHousehold.id).eq("is_purchased", false);
+  const existingNames = new Set((existingPending || []).map((i) => i.name.toLowerCase()));
+
+  const toInsert = lines
+    .filter((line) => !existingNames.has(line.toLowerCase()))
+    .map((line) => ({ household_id: currentHousehold.id, name: line, is_recurring: false }));
+
+  if (!toInsert.length) { showToast("Todos esos ingredientes ya estaban en tu lista de compras.", "success"); return; }
+
+  const { error } = await supabase.from("shopping_list_items").insert(toInsert);
+  if (error) { showToast("Error agregando ingredientes: " + error.message); return; }
+  showToast(`Se agregaron ${toInsert.length} ingrediente(s) a la lista de compras.`, "success");
+  await loadShoppingList();
+}
+
+async function loadRecipes() {
+  const el = document.getElementById("recipes-list");
+  if (!el) return;
+  const { data } = await supabase
+    .from("recipes").select("*").eq("household_id", currentHousehold.id).order("name");
+  const recipes = data || [];
+
+  el.innerHTML = recipes.length ? recipes.map((r) => `
+    <div class="recipe-card">
+      <div class="recipe-name">${escapeHtml(r.name)}</div>
+      <div class="recipe-ingredients">${escapeHtml(r.ingredients)}</div>
+      <div class="recipe-actions">
+        <button type="button" class="btn-primary" data-add-recipe="${r.id}">Agregar a la lista de compras</button>
+        <button type="button" class="btn-danger" data-del-recipe="${r.id}">${icon("trash", 14)}</button>
+      </div>
+    </div>`).join("") : `<p class="muted">No tienes recetas guardadas todavía.</p>`;
+
+  el.querySelectorAll("[data-add-recipe]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const recipe = recipes.find((r) => r.id === btn.dataset.addRecipe);
+      if (recipe) addRecipeIngredientsToShoppingList(recipe);
+    });
+  });
+  el.querySelectorAll("[data-del-recipe]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("¿Eliminar esta receta?")) return;
+      await supabase.from("recipes").delete().eq("id", btn.dataset.delRecipe);
+      await loadRecipes();
     });
   });
 }
