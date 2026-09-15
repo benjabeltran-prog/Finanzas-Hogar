@@ -3108,6 +3108,27 @@ async function loadTasks() {
 // ---------------- INIT ----------------
 initAuthTabs();
 
+// Secciones colapsables genéricas (Presupuestos, Suscripciones, etc.)
+document.querySelectorAll("[data-collapsible-toggle]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const content = document.getElementById(`collapsible-${btn.dataset.collapsibleToggle}`);
+    if (!content) return;
+    const isOpen = content.style.display !== "none";
+    content.style.display = isOpen ? "none" : "block";
+    btn.classList.toggle("open", !isOpen);
+  });
+});
+
+// Grupos del menú lateral (Finanzas, Planificación, Tareas, Lista de Compras)
+document.querySelectorAll("[data-group-toggle]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const items = document.getElementById(`side-group-${btn.dataset.groupToggle}`);
+    if (!items) return;
+    const collapsed = items.classList.toggle("collapsed");
+    btn.classList.toggle("collapsed", collapsed);
+  });
+});
+
 function maybeShowOnboarding() {
   let seen = false;
   try { seen = localStorage.getItem("hogar-finanzas-onboarding-seen") === "true"; } catch {}
