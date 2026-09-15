@@ -1,6 +1,6 @@
 {
-  "name": "MyHome",
-  "short_name": "MyHome",
+  "name": "Fambase",
+  "short_name": "Fambase",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0d1117",
