@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=43" />
+<link rel="stylesheet" href="css/style.css?v=44" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -447,6 +447,10 @@
 
       <h3 class="section-title">Por comprar</h3>
       <p class="total-row">Total estimado: <strong id="shopping-total-estimate">$0</strong></p>
+      <div class="whatsapp-send-bar">
+        <input type="tel" id="whatsapp-number" placeholder="Número con código país (ej: 56912345678)" />
+        <button type="button" id="btn-send-whatsapp" class="btn-primary">Enviar lista por WhatsApp</button>
+      </div>
       <div id="shopping-list-pending"></div>
 
       <h3 class="section-title">Comprado recientemente</h3>
@@ -750,8 +754,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=43"></script>
-<script type="module" src="js/pdfParser.js?v=43"></script>
-<script type="module" src="js/app.js?v=43"></script>
+<script type="module" src="js/supabaseClient.js?v=44"></script>
+<script type="module" src="js/pdfParser.js?v=44"></script>
+<script type="module" src="js/app.js?v=44"></script>
 </body>
 </html>
