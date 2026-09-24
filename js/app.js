@@ -2113,6 +2113,28 @@ document.getElementById("form-shopping-item").addEventListener("submit", async (
   logActivity(`agregó "${name}" a la lista de compras`);
 });
 
+document.getElementById("btn-send-whatsapp").addEventListener("click", async () => {
+  const rawNumber = document.getElementById("whatsapp-number").value.trim();
+  const number = rawNumber.replace(/\D/g, "");
+  if (!number) { showToast("Ingresa un número primero."); return; }
+
+  // Guardamos el número para la próxima vez
+  if (number !== (currentHousehold.whatsapp_number || "")) {
+    await supabase.from("households").update({ whatsapp_number: number }).eq("id", currentHousehold.id);
+    currentHousehold.whatsapp_number = number;
+  }
+
+  const { data: pending } = await supabase
+    .from("shopping_list_items").select("name").eq("household_id", currentHousehold.id).eq("is_purchased", false);
+  if (!pending || !pending.length) { showToast("No hay ítems pendientes en la lista."); return; }
+
+  const lines = pending.map((i) => `- ${i.name}`).join("\n");
+  const text = `Lista de compras — ${currentHousehold.name}:\n\n${lines}`;
+  const url = `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
+  logActivity("envió la lista de compras por WhatsApp");
+});
+
 document.getElementById("btn-clear-purchased").addEventListener("click", async () => {
   if (!confirm("¿Borrar todos los ítems comprados de la lista?")) return;
   await supabase.from("shopping_list_items")
@@ -2121,6 +2143,9 @@ document.getElementById("btn-clear-purchased").addEventListener("click", async (
 });
 
 async function loadShoppingList() {
+  const numberInput = document.getElementById("whatsapp-number");
+  if (numberInput) numberInput.value = currentHousehold.whatsapp_number || "56966574792";
+
   const { data } = await supabase
     .from("shopping_list_items").select("*").eq("household_id", currentHousehold.id)
     .order("created_at");
