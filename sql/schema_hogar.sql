@@ -38,3 +38,6 @@ create policy "household_events_all" on household_events for all
 
 -- Precio estimado (opcional, editable) por ítem de la lista de compras
 alter table shopping_list_items add column if not exists estimated_price numeric;
+
+-- Número de WhatsApp administrable para enviar la lista de compras
+alter table households add column if not exists whatsapp_number text;
