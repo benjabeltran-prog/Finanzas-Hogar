@@ -17,3 +17,6 @@ create table if not exists household_inventory (
 alter table household_inventory enable row level security;
 create policy "household_inventory_all" on household_inventory for all
   using (is_member_of(household_id)) with check (is_member_of(household_id));
+
+-- Cantidad de unidades que quedan (en vez de solo un estado fijo)
+alter table household_inventory add column if not exists quantity integer not null default 1;
