@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=44" />
+<link rel="stylesheet" href="css/style.css?v=45" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -469,9 +469,10 @@
       <div id="recipes-list"></div>
 
       <h3 class="section-title">Inventario del hogar</h3>
-      <p class="muted">Marca el estado de cada producto — al quedar "Agotado" se agrega solo a la lista de compras. Al comprarlo y marcarlo arriba, vuelve a "En stock" solo.</p>
+      <p class="muted">Anota cuántas unidades quedan de cada producto — al llegar a 0 se agrega solo a la lista de compras. Al comprarlo y marcarlo arriba, vuelve a 1 unidad solo.</p>
       <form id="form-inventory-item" class="inline-form">
         <input type="text" id="inventory-item-name" placeholder="Ej: Arroz, Papel higiénico" required style="flex:1" />
+        <input type="number" id="inventory-item-quantity" placeholder="Cantidad" value="1" min="0" step="1" style="max-width:110px" />
         <button type="submit" class="btn-primary">Agregar</button>
       </form>
       <div id="inventory-list"></div>
@@ -754,8 +755,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=44"></script>
-<script type="module" src="js/pdfParser.js?v=44"></script>
-<script type="module" src="js/app.js?v=44"></script>
+<script type="module" src="js/supabaseClient.js?v=45"></script>
+<script type="module" src="js/pdfParser.js?v=45"></script>
+<script type="module" src="js/app.js?v=45"></script>
 </body>
 </html>
