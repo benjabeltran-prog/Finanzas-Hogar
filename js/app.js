@@ -453,8 +453,8 @@ document.getElementById("btn-join-household").addEventListener("click", async ()
   const myName = document.getElementById("join-display-name").value.trim();
   if (!code) return;
 
-  const { data: hh, error } = await supabase
-    .from("households").select("id, name").eq("join_code", code).single();
+  const { data: matches, error } = await supabase.rpc("find_household_by_code", { code });
+  const hh = matches && matches[0];
   if (error || !hh) { showToast("Código no encontrado."); return; }
 
   const { error: joinError } = await supabase
@@ -2204,7 +2204,7 @@ async function loadShoppingList() {
             .ilike("name", item.name).maybeSingle();
           if (invItem) {
             await supabase.from("household_inventory")
-              .update({ status: "ok", updated_at: new Date().toISOString() }).eq("id", invItem.id);
+              .update({ quantity: 5, status: "ok", updated_at: new Date().toISOString() }).eq("id", invItem.id);
           }
 
           if (isRecurring) {
@@ -2303,13 +2303,16 @@ async function loadRecipes() {
 document.getElementById("form-inventory-item").addEventListener("submit", async (e) => {
   e.preventDefault();
   const name = document.getElementById("inventory-item-name").value.trim();
+  const quantityRaw = document.getElementById("inventory-item-quantity").value;
+  const quantity = quantityRaw !== "" ? Math.max(0, parseInt(quantityRaw, 10)) : 1;
   if (!name) return;
 
   const { error } = await supabase.from("household_inventory").insert({
-    household_id: currentHousehold.id, name, status: "ok",
+    household_id: currentHousehold.id, name, quantity, status: quantity <= 0 ? "out" : quantity <= 2 ? "low" : "ok",
   });
   if (error) { showToast("Error agregando al inventario: " + error.message); return; }
   e.target.reset();
+  document.getElementById("inventory-item-quantity").value = "1";
   await loadInventory();
 });
 
@@ -2323,17 +2326,24 @@ async function ensureShoppingListItemFor(name) {
   });
 }
 
-const INVENTORY_STATUS_ORDER = ["ok", "low", "out"];
+const LOW_STOCK_THRESHOLD = 2; // 1 o 2 unidades = "quedando poco"
+
+function statusFromQuantity(quantity) {
+  if (quantity <= 0) return "out";
+  if (quantity <= LOW_STOCK_THRESHOLD) return "low";
+  return "ok";
+}
 const INVENTORY_STATUS_LABELS = { ok: "En stock", low: "Quedando poco", out: "Agotado" };
 
-async function cycleInventoryStatus(item) {
-  const idx = INVENTORY_STATUS_ORDER.indexOf(item.status);
-  const newStatus = INVENTORY_STATUS_ORDER[(idx + 1) % INVENTORY_STATUS_ORDER.length];
+async function updateInventoryQuantity(item, newQuantity) {
+  const quantity = Math.max(0, newQuantity);
+  const newStatus = statusFromQuantity(quantity);
+  const wasOut = item.status === "out";
 
   await supabase.from("household_inventory")
-    .update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", item.id);
+    .update({ quantity, status: newStatus, updated_at: new Date().toISOString() }).eq("id", item.id);
 
-  if (newStatus === "out") {
+  if (newStatus === "out" && !wasOut) {
     await ensureShoppingListItemFor(item.name);
     await loadShoppingList();
   }
@@ -2350,16 +2360,31 @@ async function loadInventory() {
   el.innerHTML = items.length ? items.map((item) => `
     <div class="inventory-item">
       <span class="inventory-name">${escapeHtml(item.name)}</span>
-      <button type="button" class="inventory-status-badge status-${item.status}" data-inventory-id="${item.id}">
-        ${INVENTORY_STATUS_LABELS[item.status]}
-      </button>
+      <span class="inventory-status-badge status-${item.status}">${INVENTORY_STATUS_LABELS[item.status]}</span>
+      <div class="inventory-qty-control">
+        <button type="button" class="inventory-qty-btn" data-qty-down="${item.id}">−</button>
+        <input type="number" class="inventory-qty-input" data-qty-input="${item.id}" value="${item.quantity}" min="0" step="1" />
+        <button type="button" class="inventory-qty-btn" data-qty-up="${item.id}">+</button>
+      </div>
       <button class="btn-danger" data-del-inventory="${item.id}">${icon("trash", 14)}</button>
     </div>`).join("") : `<p class="muted">No hay productos en el inventario todavía.</p>`;
 
-  el.querySelectorAll("[data-inventory-id]").forEach((btn) => {
+  el.querySelectorAll("[data-qty-down]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const item = items.find((i) => i.id === btn.dataset.inventoryId);
-      if (item) cycleInventoryStatus(item);
+      const item = items.find((i) => i.id === btn.dataset.qtyDown);
+      if (item) updateInventoryQuantity(item, Number(item.quantity) - 1);
+    });
+  });
+  el.querySelectorAll("[data-qty-up]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const item = items.find((i) => i.id === btn.dataset.qtyUp);
+      if (item) updateInventoryQuantity(item, Number(item.quantity) + 1);
+    });
+  });
+  el.querySelectorAll("[data-qty-input]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const item = items.find((i) => i.id === input.dataset.qtyInput);
+      if (item) updateInventoryQuantity(item, Number(input.value) || 0);
     });
   });
   el.querySelectorAll("[data-del-inventory]").forEach((btn) => {
@@ -3225,4 +3250,10 @@ function updateStickyOffsets() {
 updateStickyOffsets();
 window.addEventListener("resize", updateStickyOffsets);
 window.addEventListener("orientationchange", updateStickyOffsets);
-setTimeout(updateStickyOffsets, 300); // por si las fuentes/iconos cambian el alto al cargar
+window.addEventListener("load", updateStickyOffsets);
+window.addEventListener("pageshow", updateStickyOffsets);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) updateStickyOffsets(); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(updateStickyOffsets);
+// En modo PWA (anclada a la pantalla de inicio), el espacio de seguridad
+// del notch/reloj a veces tarda un poco más en aplicarse al abrir la app.
+[100, 300, 800, 1500].forEach((ms) => setTimeout(updateStickyOffsets, ms));
