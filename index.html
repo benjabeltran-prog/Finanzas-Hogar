@@ -8,6 +8,14 @@
       var t = localStorage.getItem("hogar-finanzas-theme") || "dark";
       document.documentElement.setAttribute("data-theme", t);
     } catch (e) {}
+    // Detecta si la app corre "anclada" a la pantalla de inicio (PWA
+    // standalone). navigator.standalone es específico de iOS y más
+    // confiable ahí que solo la consulta CSS display-mode.
+    try {
+      var isStandalone = window.navigator.standalone === true
+        || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+      if (isStandalone) document.documentElement.classList.add("pwa-standalone");
+    } catch (e) {}
   })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -17,7 +25,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Fambase" />
 <title>Fambase</title>
-<link rel="icon" href="favicon.svg?v=46" type="image/svg+xml" />
+<link rel="icon" href="favicon.svg?v=47" type="image/svg+xml" />
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png" />
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
 <link rel="apple-touch-icon" sizes="167x167" href="icons/icon-167.png" />
@@ -27,7 +35,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/style.css?v=46" />
+<link rel="stylesheet" href="css/style.css?v=47" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" ></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -41,7 +49,7 @@
 <!-- ============ PANTALLA DE LOGIN ============ -->
 <div id="auth-screen" class="auth-screen">
   <div class="auth-card">
-    <img src="favicon.svg?v=46" class="brand-mark" alt="" />
+    <img src="favicon.svg?v=47" class="brand-mark" alt="" />
     <h1>Fambase</h1>
     <p class="muted">Finanzas, tareas, planificación y más — todo tu hogar en un solo lugar.</p>
 
@@ -87,7 +95,7 @@
   <header class="topbar">
     <div class="topbar-left">
       <button id="btn-hamburger" class="hamburger-btn" aria-label="Menú"></button>
-      <img src="favicon.svg?v=46" class="brand-mark brand-mark-sm" alt="" />
+      <img src="favicon.svg?v=47" class="brand-mark brand-mark-sm" alt="" />
     </div>
     <div class="topbar-center">
       <div class="topbar-ticker">
@@ -109,7 +117,7 @@
   <div class="drawer-overlay" id="drawer-overlay" style="display:none"></div>
   <nav class="drawer" id="drawer">
     <div class="drawer-header">
-      <span class="logo"><img src="favicon.svg?v=46" class="brand-mark brand-mark-sm" alt="" />Fambase</span>
+      <span class="logo"><img src="favicon.svg?v=47" class="brand-mark brand-mark-sm" alt="" />Fambase</span>
       <button type="button" id="drawer-close" class="chat-popup-close">✕</button>
     </div>
 
@@ -759,8 +767,8 @@
   </div>
 </div>
 
-<script type="module" src="js/supabaseClient.js?v=46"></script>
-<script type="module" src="js/pdfParser.js?v=46"></script>
-<script type="module" src="js/app.js?v=46"></script>
+<script type="module" src="js/supabaseClient.js?v=47"></script>
+<script type="module" src="js/pdfParser.js?v=47"></script>
+<script type="module" src="js/app.js?v=47"></script>
 </body>
 </html>
