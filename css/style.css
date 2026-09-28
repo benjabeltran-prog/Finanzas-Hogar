@@ -291,12 +291,13 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .topbar-left, .topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
 /* Colchón extra de seguridad cuando la app corre "anclada" a la pantalla
-   de inicio (modo standalone) — algunos iPhone tardan un poco más en
-   aplicar el espacio del notch/reloj, así que sumamos un margen fijo
-   además del safe-area-inset-top para no arriesgarnos a que quede corto. */
+   de inicio (modo standalone) — en algunos iPhone el espacio del
+   notch/reloj no se aplica solo con la consulta CSS, así que reforzamos
+   con !important y una clase que pone JavaScript como respaldo. */
 @media (display-mode: standalone) {
-  .topbar { padding-top: calc(env(safe-area-inset-top, 20px) + 10px); }
+  .topbar { padding-top: calc(env(safe-area-inset-top, 44px) + 24px) !important; }
 }
+html.pwa-standalone .topbar { padding-top: calc(env(safe-area-inset-top, 44px) + 24px) !important; }
 
 /* ---------- HAMBURGER + DRAWER ---------- */
 .hamburger-btn {
